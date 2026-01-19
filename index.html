@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Fetcher (Alpine.js)</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --border: #334155;
+            --input-bg: #0f172a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 120px 20px 40px 20px; /* Extra top padding for sticky header */
+            gap: 2rem;
+        }
+
+        .sticky-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 1200px;
+            border: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        input[type="url"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="url"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.875rem;
+            background-color: var(--accent);
+            color: #0f172a;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            min-height: 1.25em;
+            display: flex;
+            align-items: center;
+        }
+
+        .status.error {
+            color: #ef4444;
+        }
+
+        .status.success {
+            color: #22c55e;
+        }
+
+        .token-badge {
+            background-color: #fbbf24;
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        .session-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--input-bg);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            max-height: 200px;
+            overflow-y: auto;
+            transition: border-color 0.3s;
+        }
+
+        .session-list.updated {
+            border-color: var(--accent);
+        }
+
+        .session-timer {
+            background-color: var(--input-bg);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            text-align: center;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .session-timer.warning {
+            border-color: #f59e0b;
+            color: #f59e0b;
+        }
+
+        .session-timer.expired {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Sticky Header with Language and Timers -->
+    <div class="sticky-header">
+        <div class="container" x-data="sessionTimers()" style="max-width: 1200px; padding: 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; align-items: end;">
+                <!-- Language Selector -->
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="language-selector" style="margin-bottom: 0.5rem;">Language</label>
+                    <select id="language-selector" x-model="$store.language.current" @change="$store.language.save()"
+                            style="width: 100%; padding: 0.75rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                        <option value="en">English (en)</option>
+                        <option value="es">Español (es)</option>
+                        <option value="es_US">Español US (es_US)</option>
+                    </select>
+                </div>
+
+                <!-- Access Token Timer (70 seconds) -->
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="margin-bottom: 0.5rem;">Access Token Expires In</label>
+                    <div class="session-timer" :class="{ 'warning': accessTokenTime <= 20 && accessTokenTime > 0, 'expired': accessTokenTime <= 0 }">
+                        <span x-text="formatTime(accessTokenTime)"></span>
+                    </div>
+                </div>
+
+                <!-- Session Timer (120 seconds, refreshable) -->
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="margin-bottom: 0.5rem;">Session Expires In</label>
+                    <div class="session-timer" :class="{ 'warning': sessionTime <= 30 && sessionTime > 0, 'expired': sessionTime <= 0 }">
+                        <span x-text="formatTime(sessionTime)"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Runner 1: Register -->
+    <div class="container" x-data="requestRunner({
+        id: 'auth-register',
+        title: 'Register',
+        url: 'http://localhost:3007/api/auth/v1.0/register',
+        method: 'POST',
+        body: {
+            email: 'user2@example.com',
+            username: 'johndoe1',
+            password: 'SecurePassword123!',
+            firstName: 'John',
+            lastName: 'Doe',
+            tenantName: 'My Company1',
+            companyName: 'Acme Corporation1',
+            termsAccepted: true,
+            privacyPolicyAccepted: true
+        },
+        isRegisterRunner: true
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group" x-show="config.isRegisterRunner">
+            <button type="button" @click="randomizeRegisterData"
+                style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem;">
+                🎲 Generate Random Data
+            </button>
+        </div>
+
+        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+            <label :for="config.id + '-body'">Request Body (JSON)</label>
+            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
+    <!-- Runner 2: Confirm Email -->
+    <div class="container" x-data="requestRunner({
+        id: 'confirm-email',
+        title: 'Confirm Email',
+        url: 'http://localhost:3007/api/auth/v1.0/confirm-email',
+        method: 'POST',
+        body: {
+            token: '0077ce01-a45f-4a02-bc36-ddab08f73ac2'
+        },
+        isConfirmEmailRunner: true
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+            <label :for="config.id + '-body'">Request Body (JSON)</label>
+            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="config.isConfirmEmailRunner && bodyStr.includes('emailConfirmationToken') === false && bodyStr !== ''" class="token-badge" style="background-color: #22c55e;">READY</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
+    <!-- Runner 3: Login -->
+    <div class="container" x-data="requestRunner({
+        id: 'auth-login',
+        title: 'Login',
+        url: 'http://localhost:3007/api/auth/v1.0/login',
+        method: 'POST',
+        body: {
+            username: 'user@example.com',
+            password: 'SecurePassword123!',
+            rememberMe: false,
+            fingerprintId: 'a7f5c8d9e3b1f2a4',
+            fingerprintData: JSON.stringify({
+                data: {
+                    ip: '89.89.23.93',
+                    country: {
+                        code: 'DE',
+                        name: 'Deutschland'
+                    },
+                    platform: 'web'
+                }
+            })
+        },
+        isLoginRunner: true
+    })" @runner-success.window="handleGlobalSuccess($event.detail)" @registration-credentials.window="handleRegistrationCredentials($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group" x-show="config.isLoginRunner && lastRegistrationEmail">
+            <button type="button" @click="copyRegistrationCredentials"
+                style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem;">
+                📋 Use Last Registration
+            </button>
+        </div>
+
+        <div class="form-group" x-show="config.isLoginRunner">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                <input type="checkbox" x-model="sendFingerprint" style="width: auto; cursor: pointer;">
+                <span style="font-size: 0.95rem;">Send fingerprint data (device info)</span>
+            </label>
+        </div>
+
+        <div class="form-group" x-show="config.isLoginRunner">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                <input type="checkbox" x-model="rememberMe" style="width: auto; cursor: pointer;">
+                <span style="font-size: 0.95rem;">Remember me (30 days)</span>
+            </label>
+        </div>
+
+        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+            <label :for="config.id + '-body'">Request Body (JSON)</label>
+            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
+    <!-- Runner 2: Get Profile (Protected) -->
+    <div class="container" x-data="requestRunner({
+        id: 'get-profile',
+        title: 'Get Profile (Protected Endpoint)',
+        url: 'http://localhost:3007/api/auth/v1.0/profile',
+        method: 'GET'
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+            <label :for="config.id + '-body'">Request Body (JSON)</label>
+            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
+    <!-- Runner: Get Active Sessions -->
+    <div class="container" x-data="requestRunner({
+        id: 'get-sessions',
+        title: 'Get Active Sessions (All Devices)',
+        url: 'http://localhost:3007/api/auth/v1.0/sessions',
+        method: 'GET'
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
+    <!-- Runner: Logout -->
+    <div class="container" x-data="requestRunner({
+        id: 'auth-logout',
+        title: 'Logout (Terminate Current Session)',
+        url: 'http://localhost:3007/api/auth/v1.0/logout',
+        method: 'DELETE',
+        isLogoutRunner: true
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+            <label :for="config.id + '-body'">Request Body (JSON)</label>
+            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
+    <!-- Runner: Refresh Token -->
+    <div class="container" x-data="requestRunner({
+        id: 'auth-refresh',
+        title: 'Refresh Token (Extend Session)',
+        url: 'http://localhost:3007/api/auth/v1.0/refresh',
+        method: 'POST',
+        body: { refreshToken: '' },
+        isRefreshRunner: true
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+            <label :for="config.id + '-body'">Request Body (JSON)</label>
+            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
+    <!-- Runner: Revoke Single Session -->
+    <div class="container" x-data="requestRunner({
+        id: 'session-revoke',
+        title: 'Revoke Specific Session',
+        url: 'http://localhost:3007/api/auth/v1.0/sessions/',
+        method: 'DELETE',
+        isSingleSessionRunner: true
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <!-- Single Session Selector -->
+        <div class="form-group" x-show="config.isSingleSessionRunner">
+            <label>Select Session to Revoke</label>
+            <select x-model="selectedSessionId" @change="updateUrlWithSessionId"
+                    style="width: 100%; padding: 0.75rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                <option value="">-- Select a session --</option>
+                <template x-for="id in availableSessions" :key="id">
+                    <option :value="id" x-text="id"></option>
+                </template>
+            </select>
+            <div x-show="availableSessions.length === 0" style="color: var(--text-secondary); font-style: italic; margin-top: 0.5rem;">
+                No sessions available. Run login first.
+            </div>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading || !selectedSessionId"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
+    <!-- Runner 3: Bulk Delete -->
+    <div class="container" x-data="requestRunner({
+        id: 'session-delete',
+        title: 'Bulk Delete Sessions',
+        url: 'http://localhost:3007/api/auth/v1.0/sessions/bulk',
+        method: 'DELETE',
+        body: { sessionIds: [] },
+        isSessionRunner: true
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <!-- Session Selector -->
+        <div class="form-group" x-show="config.isSessionRunner">
+            <label>Select Sessions to Delete</label>
+            <div :id="config.id + '-sessions'" class="session-list" :class="{ 'updated': highlightSessions }">
+                <template x-for="id in availableSessions" :key="id">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" :value="id" x-model="selectedSessions" class="session-checkbox">
+                        <span style="font-family: monospace; font-size: 0.85rem;" x-text="id"></span>
+                    </label>
+                </template>
+                <div x-show="availableSessions.length === 0" style="color: var(--text-secondary); font-style: italic;">
+                    No sessions available. Run login first.
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+            <label :for="config.id + '-body'">Request Body (JSON)</label>
+            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        // Utility: Decode JWT token
+        function decodeJWT(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.error('Failed to decode JWT:', e);
+                return null;
+            }
+        }
+
+        document.addEventListener('alpine:init', () => {
+            // Global language store
+            Alpine.store('language', {
+                current: localStorage.getItem('selectedLanguage') || 'en',
+
+                save() {
+                    localStorage.setItem('selectedLanguage', this.current);
+                    console.log('Language changed to:', this.current);
+                }
+            });
+
+            // Session timers component
+            Alpine.data('sessionTimers', () => ({
+                accessTokenTime: 0,
+                sessionTime: 0,
+                accessTokenInterval: null,
+                sessionInterval: null,
+
+                init() {
+                    // Listen for login success to start timers
+                    window.addEventListener('runner-success', (event) => {
+                        const detail = event.detail;
+                        if (detail.runnerId === 'auth-login') {
+                            this.startAccessTokenTimer();
+                            this.startSessionTimer();
+                            console.log('[TIMERS] Started after login');
+                        }
+                        // Refresh both timers on token refresh (new access token + new refresh token)
+                        if (detail.runnerId === 'auth-refresh') {
+                            this.startAccessTokenTimer();
+                            this.resetSessionTimer();
+                            console.log('[TIMERS] Both timers reset after refresh');
+                        }
+                    });
+                },
+
+                startAccessTokenTimer() {
+                    this.accessTokenTime = 70;
+                    if (this.accessTokenInterval) clearInterval(this.accessTokenInterval);
+                    this.accessTokenInterval = setInterval(() => {
+                        if (this.accessTokenTime > 0) {
+                            this.accessTokenTime--;
+                        } else {
+                            clearInterval(this.accessTokenInterval);
+                        }
+                    }, 1000);
+                },
+
+                startSessionTimer() {
+                    this.sessionTime = 120;
+                    if (this.sessionInterval) clearInterval(this.sessionInterval);
+                    this.sessionInterval = setInterval(() => {
+                        if (this.sessionTime > 0) {
+                            this.sessionTime--;
+                        } else {
+                            clearInterval(this.sessionInterval);
+                        }
+                    }, 1000);
+                },
+
+                resetSessionTimer() {
+                    this.sessionTime = 120;
+                    if (!this.sessionInterval) {
+                        this.startSessionTimer();
+                    }
+                },
+
+                formatTime(seconds) {
+                    if (seconds <= 0) return 'EXPIRED';
+                    const mins = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+            }));
+
+            Alpine.data('requestRunner', (config) => ({
+                config: config,
+                url: config.url,
+                method: config.method,
+                bodyStr: config.body ? JSON.stringify(config.body, null, 2) : '',
+                responseOutput: '',
+                statusMsg: '',
+                statusType: '',
+                isLoading: false,
+                authToken: null,
+
+                // Session specific
+                availableSessions: config.availableSessions || [],
+                selectedSessions: [],
+                selectedSessionId: '',  // For single session deletion
+                highlightSessions: false,
+
+                // Login specific - store last registration credentials
+                lastRegistrationEmail: null,
+                lastRegistrationPassword: null,
+                rememberMe: false,  // Remember me checkbox state
+                sendFingerprint: true,  // Send fingerprint data checkbox state
+
+                init() {
+                    // Watch for session selection changes to update body (bulk delete)
+                    if (this.config.isSessionRunner) {
+                        this.$watch('selectedSessions', (value) => {
+                            const currentBody = { sessionIds: value };
+                            this.bodyStr = JSON.stringify(currentBody, null, 2);
+                        });
+                    }
+
+                    // Watch for rememberMe changes to update body (login)
+                    if (this.config.isLoginRunner) {
+                        this.$watch('rememberMe', (value) => {
+                            try {
+                                const currentBody = JSON.parse(this.bodyStr);
+                                currentBody.rememberMe = value;
+                                this.bodyStr = JSON.stringify(currentBody, null, 2);
+                            } catch (e) {
+                                // If JSON is invalid, do nothing
+                            }
+                        });
+
+                        // Watch for sendFingerprint changes to update body (login)
+                        this.$watch('sendFingerprint', (value) => {
+                            try {
+                                const currentBody = JSON.parse(this.bodyStr);
+                                if (value) {
+                                    // Add fingerprint fields
+                                    currentBody.fingerprintId = 'a7f5c8d9e3b1f2a4';
+                                    currentBody.fingerprintData = JSON.stringify({
+                                        data: {
+                                            ip: '89.89.23.93',
+                                            country: {
+                                                code: 'DE',
+                                                name: 'Deutschland'
+                                            },
+                                            platform: 'web'
+                                        }
+                                    });
+                                } else {
+                                    // Remove fingerprint fields
+                                    delete currentBody.fingerprintId;
+                                    delete currentBody.fingerprintData;
+                                }
+                                this.bodyStr = JSON.stringify(currentBody, null, 2);
+                            } catch (e) {
+                                // If JSON is invalid, do nothing
+                            }
+                        });
+                    }
+                },
+
+                updateUrlWithSessionId() {
+                    // Update URL with selected session ID for single session deletion
+                    if (this.selectedSessionId) {
+                        // Remove any existing sessionId from URL and append new one
+                        const baseUrl = this.config.url;
+                        this.url = baseUrl + this.selectedSessionId;
+                    }
+                },
+
+                handleGlobalSuccess(detail) {
+                    // Only listen to events from OTHER runners (except refresh runner needs to listen to itself)
+                    if (detail.runnerId === this.config.id && !this.config.isRefreshRunner) return;
+
+                    const data = detail.data;
+
+                    // 1. Check for Token (for all runners)
+                    let token = null;
+                    let refreshToken = null;
+                    if (typeof data === 'object' && data !== null) {
+                        token = data.token || data.accessToken || data.jwt || data.access_token;
+                        refreshToken = data.refresh_token || data.refreshToken;
+                    }
+                    if (token) {
+                        this.authToken = token;
+                        console.log(`[${this.config.id}] Token updated`);
+                    }
+
+                    // 2. Check for Email Confirmation Token (only for confirm email runner)
+                    if (this.config.isConfirmEmailRunner) {
+                        let confirmToken = null;
+                        if (typeof data === 'object' && data !== null) {
+                            confirmToken = data.emailConfirmationToken || data.confirmationToken || data.verification_token;
+                        }
+                        if (confirmToken) {
+                            const updatedBody = { token: confirmToken };
+                            this.bodyStr = JSON.stringify(updatedBody, null, 2);
+                            this.showStatus('Email confirmation token received', 'success');
+                            console.log(`[${this.config.id}] Email confirmation token updated:`, confirmToken);
+                        }
+                    }
+
+                    // 2b. Capture registration credentials (only for login runner)
+                    if (this.config.isLoginRunner && detail.runnerId === 'auth-register') {
+                        if (typeof data === 'object' && data !== null) {
+                            // Try to get email and password from the user object in response
+                            const email = data.user?.email || data.email;
+                            if (email) {
+                                this.lastRegistrationEmail = email;
+                                // Password is not in response, so we need to extract from original request
+                                // We'll dispatch a custom event from register to send credentials
+                                console.log(`[${this.config.id}] Captured registration email:`, email);
+                            }
+                        }
+                    }
+
+                    // 2c. Capture refresh token (only for refresh token runner)
+                    if (this.config.isRefreshRunner) {
+                        let refreshToken = null;
+                        if (typeof data === 'object' && data !== null) {
+                            refreshToken = data.refresh_token || data.refreshToken;
+                        }
+                        if (refreshToken) {
+                            const updatedBody = { refreshToken: refreshToken };
+                            this.bodyStr = JSON.stringify(updatedBody, null, 2);
+                            this.showStatus('Refresh token captured - ready to extend session', 'success');
+                            console.log(`[${this.config.id}] Refresh token updated`);
+                        }
+                    }
+
+                    // 3. Check for Sessions (for session runner and single session runner)
+                    if (this.config.isSessionRunner || this.config.isSingleSessionRunner) {
+                        let ids = [];
+                        if (Array.isArray(data)) {
+                            if (data.length > 0 && typeof data[0] === 'object') {
+                                ids = data.map(item => item.id || item.sessionId || item._id).filter(Boolean);
+                            } else {
+                                ids = data;
+                            }
+                        } else if (typeof data === 'object' && data !== null) {
+                            if (Array.isArray(data.activeSessions)) {
+                                ids = data.activeSessions.map(s => s.sessionId || s.id || s);
+                            } else if (Array.isArray(data.sessions)) {
+                                ids = data.sessions.map(s => s.sessionId || s.id || s);
+                            } else if (Array.isArray(data.data)) {
+                                ids = data.data.map(s => s.sessionId || s.id || s);
+                            } else if (Array.isArray(data.ids)) {
+                                ids = data.ids;
+                            }
+                        }
+
+                        if (ids.length > 0) {
+                            this.availableSessions = ids;
+                            this.highlightSessions = true;
+                            setTimeout(() => this.highlightSessions = false, 1000);
+                            console.log(`[${this.config.id}] Sessions updated:`, ids);
+                        }
+                    }
+                },
+
+                async sendRequest() {
+                    if (!this.url) {
+                        this.showStatus('Please enter a valid URL', 'error');
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    this.responseOutput = '';
+                    this.statusMsg = '';
+
+                    try {
+                        const options = {
+                            method: this.method,
+                            headers: {
+                                'Accept-Language': this.$store.language.current
+                            }
+                        };
+
+                        if (this.authToken) {
+                            options.headers['Authorization'] = `Bearer ${this.authToken}`;
+                        }
+
+                        if (['POST', 'PUT', 'DELETE'].includes(this.method) && this.bodyStr) {
+                            try {
+                                const requestBody = JSON.parse(this.bodyStr); // Validate
+                                options.body = JSON.stringify(requestBody);
+                                options.headers['Content-Type'] = 'application/json; charset=UTF-8';
+                            } catch (e) {
+                                this.showStatus('Invalid JSON in request body', 'error');
+                                this.isLoading = false;
+                                return;
+                            }
+                        }
+
+                        const response = await fetch(this.url, options);
+                        console.log(`RAW [${this.config.title}]`, response);
+
+                        const contentType = response.headers.get('content-type');
+                        let result;
+                        let jsonResponse = null;
+
+                        if (contentType && contentType.includes('application/json')) {
+                            jsonResponse = await response.json();
+                            result = JSON.stringify(jsonResponse, null, 2);
+                        } else {
+                            result = await response.text();
+                        }
+
+                        this.responseOutput = result;
+
+                        if (response.ok) {
+                            this.showStatus(`Success: ${response.status} ${response.statusText}`, 'success');
+
+                            // Clear auth token on logout
+                            if (this.config.isLogoutRunner) {
+                                this.authToken = null;
+                            }
+
+                            // Dispatch success event for other runners
+                            this.$dispatch('runner-success', {
+                                runnerId: this.config.id,
+                                data: jsonResponse || result
+                            });
+
+                            // Special: dispatch registration credentials for login runner
+                            if (this.config.id === 'auth-register' && this.bodyStr) {
+                                try {
+                                    const requestBody = JSON.parse(this.bodyStr);
+                                    if (requestBody.email && requestBody.password) {
+                                        this.$dispatch('registration-credentials', {
+                                            email: requestBody.email,
+                                            username: requestBody.username || requestBody.email,
+                                            password: requestBody.password
+                                        });
+                                    }
+                                } catch (e) {
+                                    console.error('Failed to parse registration body', e);
+                                }
+                            }
+                        } else if (response.status === 409 && jsonResponse) {
+                            // Handle 409 Conflict (session limit exceeded)
+                            this.showStatus(`Session Limit Exceeded (${response.status})`, 'error');
+
+                            // Extract token and sessions from 409 response
+                            this.$dispatch('runner-success', {
+                                runnerId: this.config.id,
+                                data: jsonResponse
+                            });
+                        } else {
+                            this.showStatus(`Error: ${response.status} ${response.statusText}`, 'error');
+                        }
+
+                    } catch (error) {
+                        console.error(error);
+                        this.responseOutput = error.toString();
+                        this.showStatus('Network Error', 'error');
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                showStatus(msg, type) {
+                    this.statusMsg = msg;
+                    this.statusType = type;
+                },
+
+                randomizeRegisterData() {
+                    const randomNum = Math.floor(Math.random() * 10000);
+                    const randomBody = {
+                        email: `user${randomNum}@example.com`,
+                        username: `johndoe${randomNum}`,
+                        password: 'SecurePassword123!',
+                        firstName: 'John',
+                        lastName: 'Doe',
+                        tenantName: `My Company${randomNum}`,
+                        companyName: `Acme Corporation${randomNum}`,
+                        termsAccepted: true,
+                        privacyPolicyAccepted: true
+                    };
+                    this.bodyStr = JSON.stringify(randomBody, null, 2);
+                    this.showStatus('Random data generated', 'success');
+                },
+
+                handleRegistrationCredentials(credentials) {
+                    if (this.config.isLoginRunner) {
+                        this.lastRegistrationEmail = credentials.email;
+                        this.lastRegistrationPassword = credentials.password;
+                        console.log(`[${this.config.id}] Registration credentials received`);
+                    }
+                },
+
+                copyRegistrationCredentials() {
+                    if (this.lastRegistrationEmail && this.lastRegistrationPassword) {
+                        const loginBody = {
+                            username: this.lastRegistrationEmail,
+                            password: this.lastRegistrationPassword,
+                            rememberMe: this.rememberMe
+                        };
+
+                        // Add fingerprint data if checkbox is checked
+                        if (this.sendFingerprint) {
+                            loginBody.fingerprintId = 'a7f5c8d9e3b1f2a4';
+                            loginBody.fingerprintData = JSON.stringify({
+                                data: {
+                                    ip: '89.89.23.93',
+                                    country: {
+                                        code: 'DE',
+                                        name: 'Deutschland'
+                                    },
+                                    platform: 'web'
+                                }
+                            });
+                        }
+
+                        this.bodyStr = JSON.stringify(loginBody, null, 2);
+                        this.showStatus('Credentials copied from registration', 'success');
+                    }
+                }
+            }));
+        });
+    </script>
+</body>
+
+</html>
