@@ -249,7 +249,7 @@
         body: {
             email: 'user2@example.com',
             username: 'johndoe1',
-            password: 'SecurePassword123!',
+            password: 'SecurePassword123!@#$%🔐🎉',
             firstName: 'John',
             lastName: 'Doe',
             tenantName: 'My Company1',
@@ -257,7 +257,8 @@
             termsAccepted: true,
             privacyPolicyAccepted: true
         },
-        isRegisterRunner: true
+        isRegisterRunner: true,
+        useEmojiPassword: true
     })" @runner-success.window="handleGlobalSuccess($event.detail)">
 
         <h1 x-text="config.title"></h1>
@@ -273,11 +274,15 @@
                 style="flex-grow: 1;">
         </div>
 
-        <div class="form-group" x-show="config.isRegisterRunner">
+        <div class="form-group" x-show="config.isRegisterRunner" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
             <button type="button" @click="randomizeRegisterData"
                 style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem;">
                 🎲 Generate Random Data
             </button>
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                <input type="checkbox" x-model="useEmojiPassword" @change="updatePasswordEmoji" style="width: auto; cursor: pointer;">
+                <span style="font-size: 0.95rem;">Add emoji to password 🔐</span>
+            </label>
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
@@ -635,6 +640,145 @@
         </div>
     </div>
 
+    <!-- Runner: Update User Preferences (Theme) -->
+    <div class="container" x-data="requestRunner({
+        id: 'user-preferences',
+        title: 'Update User Preferences',
+        url: 'http://localhost:3007/api/auth/v1.0/user/preferences',
+        method: 'PUT',
+        body: {
+            language: 'en-US',
+            theme: 'dark',
+            timezone: 'America/New_York'
+        }
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <!-- Quick action buttons for User Preferences -->
+        <div class="form-group">
+            <label style="margin-bottom: 0.5rem;">Theme</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" @click="setBodyField('theme', 'light')"
+                    style="background-color: #f8fafc; color: #0f172a; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    ☀️ Light
+                </button>
+                <button type="button" @click="setBodyField('theme', 'dark')"
+                    style="background-color: #1e293b; color: #f8fafc; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem; border: 1px solid var(--border);">
+                    🌙 Dark
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label style="margin-bottom: 0.5rem;">Language</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" @click="setBodyField('language', 'en-US')"
+                    style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🇺🇸 en-US
+                </button>
+                <button type="button" @click="setBodyField('language', 'es-US')"
+                    style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🇺🇸 es-US
+                </button>
+                <button type="button" @click="setBodyField('language', 'es-MX')"
+                    style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🇲🇽 es-MX
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label style="margin-bottom: 0.5rem;">Timezone</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" @click="setBodyField('timezone', 'America/New_York')"
+                    style="background-color: #22c55e; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🗽 New York
+                </button>
+                <button type="button" @click="setBodyField('timezone', 'America/Los_Angeles')"
+                    style="background-color: #22c55e; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🌴 Los Angeles
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+            <label :for="config.id + '-body'">Request Body (JSON)</label>
+            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
+    <!-- Runner: Update Tenant Preferences (Theme) -->
+    <div class="container" x-data="requestRunner({
+        id: 'tenant-preferences',
+        title: 'Update Tenant Preferences',
+        url: 'http://localhost:3007/api/auth/v1.0/tenant/preferences',
+        method: 'PUT',
+        body: {
+            defaultLanguage: 'en-US',
+            defaultTheme: 'dark',
+            defaultTimezone: 'America/New_York'
+        }
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+            <label :for="config.id + '-body'">Request Body (JSON)</label>
+            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
     <!-- Runner 3: Bulk Delete -->
     <div class="container" x-data="requestRunner({
         id: 'session-delete',
@@ -807,6 +951,9 @@
                 lastRegistrationPassword: null,
                 rememberMe: false,  // Remember me checkbox state
                 sendFingerprint: true,  // Send fingerprint data checkbox state
+
+                // Register specific - emoji password
+                useEmojiPassword: config.useEmojiPassword !== undefined ? config.useEmojiPassword : true,
 
                 init() {
                     // Watch for session selection changes to update body (bulk delete)
@@ -1064,12 +1211,27 @@
                     this.statusType = type;
                 },
 
+                setBodyField(field, value) {
+                    try {
+                        const currentBody = JSON.parse(this.bodyStr);
+                        currentBody[field] = value;
+                        this.bodyStr = JSON.stringify(currentBody, null, 2);
+                    } catch (e) {
+                        // If JSON is invalid, create new object with the field
+                        const newBody = {};
+                        newBody[field] = value;
+                        this.bodyStr = JSON.stringify(newBody, null, 2);
+                    }
+                },
+
                 randomizeRegisterData() {
                     const randomNum = Math.floor(Math.random() * 10000);
+                    const basePassword = 'SecurePassword123!@#$%';
+                    const emojiSuffix = '🔐🎉';
                     const randomBody = {
                         email: `user${randomNum}@example.com`,
                         username: `johndoe${randomNum}`,
-                        password: 'SecurePassword123!',
+                        password: this.useEmojiPassword ? basePassword + emojiSuffix : basePassword,
                         firstName: 'John',
                         lastName: 'Doe',
                         tenantName: `My Company${randomNum}`,
@@ -1079,6 +1241,26 @@
                     };
                     this.bodyStr = JSON.stringify(randomBody, null, 2);
                     this.showStatus('Random data generated', 'success');
+                },
+
+                updatePasswordEmoji() {
+                    try {
+                        const currentBody = JSON.parse(this.bodyStr);
+                        const basePassword = 'SecurePassword123!@#$%';
+                        const emojiSuffix = '🔐🎉';
+
+                        if (this.useEmojiPassword) {
+                            // Add emojis - remove existing emojis first then add
+                            currentBody.password = currentBody.password.replace(/[\u{1F300}-\u{1F9FF}]/gu, '') + emojiSuffix;
+                        } else {
+                            // Remove emojis from password
+                            currentBody.password = currentBody.password.replace(/[\u{1F300}-\u{1F9FF}]/gu, '');
+                        }
+
+                        this.bodyStr = JSON.stringify(currentBody, null, 2);
+                    } catch (e) {
+                        // If JSON is invalid, do nothing
+                    }
                 },
 
                 handleRegistrationCredentials(credentials) {
