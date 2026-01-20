@@ -640,6 +640,42 @@
         </div>
     </div>
 
+    <!-- Runner: Get Effective Preferences -->
+    <div class="container" x-data="requestRunner({
+        id: 'get-preferences',
+        title: 'Get Effective Preferences',
+        url: 'http://localhost:3007/api/auth/v1.0/preferences',
+        method: 'GET'
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-output'">Response</label>
+            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+        </div>
+    </div>
+
     <!-- Runner: Update User Preferences (Theme) -->
     <div class="container" x-data="requestRunner({
         id: 'user-preferences',
@@ -757,6 +793,53 @@
             </select>
             <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
                 style="flex-grow: 1;">
+        </div>
+
+        <!-- Quick action buttons for Tenant Preferences -->
+        <div class="form-group">
+            <label style="margin-bottom: 0.5rem;">Default Theme</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" @click="setBodyField('defaultTheme', 'light')"
+                    style="background-color: #f8fafc; color: #0f172a; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    ☀️ Light
+                </button>
+                <button type="button" @click="setBodyField('defaultTheme', 'dark')"
+                    style="background-color: #1e293b; color: #f8fafc; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem; border: 1px solid var(--border);">
+                    🌙 Dark
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label style="margin-bottom: 0.5rem;">Default Language</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" @click="setBodyField('defaultLanguage', 'en-US')"
+                    style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🇺🇸 en-US
+                </button>
+                <button type="button" @click="setBodyField('defaultLanguage', 'es-US')"
+                    style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🇺🇸 es-US
+                </button>
+                <button type="button" @click="setBodyField('defaultLanguage', 'es-MX')"
+                    style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🇲🇽 es-MX
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label style="margin-bottom: 0.5rem;">Default Timezone</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" @click="setBodyField('defaultTimezone', 'America/New_York')"
+                    style="background-color: #22c55e; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🗽 New York
+                </button>
+                <button type="button" @click="setBodyField('defaultTimezone', 'America/Los_Angeles')"
+                    style="background-color: #22c55e; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    🌴 Los Angeles
+                </button>
+            </div>
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
