@@ -4,10 +4,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>URL Fetcher (Alpine.js)</title>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        // Detect system theme and apply immediately (before page renders)
+        (function() {
+            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = isDark ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            console.log('[Theme] Initial system preference:', theme);
+
+            // Detect locale and timezone
+            const supportedLocales = ['en-US', 'es-US', 'es-MX'];
+            const browserLocale = navigator.language || 'en-US';
+            const detectedLocale = supportedLocales.includes(browserLocale) ? browserLocale : 'en-US';
+            const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+            // Store for Alpine to use
+            window.__detectedLocale = detectedLocale;
+            window.__detectedTimezone = detectedTimezone;
+
+            console.log('[Locale] Detected:', browserLocale, '-> Using:', detectedLocale);
+            console.log('[Timezone] Detected:', detectedTimezone);
+        })();
+    </script>
     <style>
+        /* Light theme (default) */
         :root {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --accent: #0284c7;
+            --accent-hover: #0369a1;
+            --border: #cbd5e1;
+            --input-bg: #f8fafc;
+            --btn-text: #ffffff;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Dark theme */
+        :root[data-theme="dark"] {
             --bg-color: #0f172a;
             --card-bg: #1e293b;
             --text-primary: #f8fafc;
@@ -16,6 +54,8 @@
             --accent-hover: #0ea5e9;
             --border: #334155;
             --input-bg: #0f172a;
+            --btn-text: #0f172a;
+            --shadow-color: rgba(0, 0, 0, 0.3);
         }
 
         * {
@@ -53,7 +93,7 @@
             background-color: var(--card-bg);
             padding: 2rem;
             border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 25px -5px var(--shadow-color);
             width: 100%;
             max-width: 1200px;
             border: 1px solid var(--border);
@@ -116,7 +156,7 @@
             width: 100%;
             padding: 0.875rem;
             background-color: var(--accent);
-            color: #0f172a;
+            color: var(--btn-text);
             border: none;
             border-radius: 8px;
             font-size: 1rem;
@@ -209,16 +249,26 @@
     <!-- Sticky Header with Language and Timers -->
     <div class="sticky-header">
         <div class="container" x-data="sessionTimers()" style="max-width: 1200px; padding: 1rem;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; align-items: end;">
-                <!-- Language Selector -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end;">
+                <!-- Language Selector with Flag -->
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label for="language-selector" style="margin-bottom: 0.5rem;">Language</label>
+                    <label for="language-selector" style="margin-bottom: 0.5rem;">
+                        <span x-text="$store.language.getFlag()" style="font-size: 1.2rem; margin-right: 0.5rem;"></span>
+                        Language
+                    </label>
                     <select id="language-selector" x-model="$store.language.current" @change="$store.language.save()"
                             style="width: 100%; padding: 0.75rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
-                        <option value="en">English (en)</option>
-                        <option value="es">Español (es)</option>
-                        <option value="es_US">Español US (es_US)</option>
+                        <option value="en-US">🇺🇸 English (en-US)</option>
+                        <option value="es-US">🇺🇸 Español (es-US)</option>
+                        <option value="es-MX">🇲🇽 Español (es-MX)</option>
                     </select>
+                </div>
+
+                <!-- Timezone Display -->
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="margin-bottom: 0.5rem;">Timezone</label>
+                    <div style="padding: 0.75rem 1rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; font-family: monospace; font-size: 0.85rem;"
+                         x-text="$store.language.timezone"></div>
                 </div>
 
                 <!-- Access Token Timer (70 seconds) -->
@@ -937,14 +987,32 @@
             }
         }
 
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            const theme = e.matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            console.log('[Theme] System preference changed to:', theme);
+        });
+
         document.addEventListener('alpine:init', () => {
             // Global language store
             Alpine.store('language', {
-                current: localStorage.getItem('selectedLanguage') || 'en',
+                current: localStorage.getItem('selectedLanguage') || window.__detectedLocale || 'en-US',
+                timezone: window.__detectedTimezone || 'Unknown',
+
+                flags: {
+                    'en-US': '🇺🇸',
+                    'es-US': '🇺🇸',
+                    'es-MX': '🇲🇽'
+                },
+
+                getFlag() {
+                    return this.flags[this.current] || '🌐';
+                },
 
                 save() {
                     localStorage.setItem('selectedLanguage', this.current);
-                    console.log('Language changed to:', this.current);
+                    console.log('[Locale] Changed to:', this.current);
                 }
             });
 
@@ -960,15 +1028,71 @@
                     window.addEventListener('runner-success', (event) => {
                         const detail = event.detail;
                         if (detail.runnerId === 'auth-login') {
+                            // Check that we received a valid access token before starting timers
+                            const data = detail.data;
+                            const token = data?.token || data?.accessToken || data?.jwt || data?.access_token;
+
+                            if (!token) {
+                                console.error('[TIMERS] Login succeeded but no access token found in response');
+                                return;
+                            }
+
+                            // Validate token is not malformed (should have 3 parts)
+                            const tokenParts = token.split('.');
+                            if (tokenParts.length !== 3) {
+                                console.error('[TIMERS] Access token appears malformed');
+                                return;
+                            }
+
+                            // Decode and check token expiration
+                            const decoded = decodeJWT(token);
+                            if (!decoded) {
+                                console.error('[TIMERS] Failed to decode access token');
+                                return;
+                            }
+
+                            if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+                                console.error('[TIMERS] Access token is already expired');
+                                return;
+                            }
+
                             this.startAccessTokenTimer();
                             this.startSessionTimer();
-                            console.log('[TIMERS] Started after login');
+                            console.log('[TIMERS] Started after login - token validated successfully');
                         }
                         // Refresh both timers on token refresh (new access token + new refresh token)
                         if (detail.runnerId === 'auth-refresh') {
+                            // Check that we received a valid access token before resetting timers
+                            const data = detail.data;
+                            const token = data?.token || data?.accessToken || data?.jwt || data?.access_token;
+
+                            if (!token) {
+                                console.error('[TIMERS] Refresh succeeded but no access token found in response');
+                                return;
+                            }
+
+                            // Validate token is not malformed
+                            const tokenParts = token.split('.');
+                            if (tokenParts.length !== 3) {
+                                console.error('[TIMERS] Refreshed access token appears malformed');
+                                return;
+                            }
+
+                            // Decode and check token expiration
+                            const decoded = decodeJWT(token);
+                            if (!decoded) {
+                                console.error('[TIMERS] Failed to decode refreshed access token');
+                                return;
+                            }
+
+                            if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+                                console.error('[TIMERS] Refreshed access token is already expired');
+                                return;
+                            }
+
                             this.startAccessTokenTimer();
                             this.resetSessionTimer();
-                            console.log('[TIMERS] Both timers reset after refresh');
+                            console.log('[TIMERS] Both timers reset after refresh - token validated successfully');
                         }
                     });
                 },
