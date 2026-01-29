@@ -7,6 +7,7 @@
     <meta name="color-scheme" content="light dark">
     <title>URL Fetcher (Alpine.js)</title>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="fingerprint.js"></script>
     <script>
         // Detect system theme and apply immediately (before page renders)
         (function() {
@@ -28,6 +29,31 @@
             console.log('[Locale] Detected:', browserLocale, '-> Using:', detectedLocale);
             console.log('[Timezone] Detected:', detectedTimezone);
         })();
+
+        // Initialize custom Fingerprint Service and get hash
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const result = await FingerprintService.getFingerprint('admin');
+                const fingerprintHash = result.hash;
+
+                const fingerprintInput = document.getElementById('fingerprint-id');
+                if (fingerprintInput) {
+                    fingerprintInput.value = fingerprintHash;
+                }
+
+                // Store globally for other components to use
+                window.__fingerprintId = fingerprintHash;
+                window.__fingerprintData = result.attributes;
+                console.log('[Fingerprint] Hash:', fingerprintHash);
+                console.log('[Fingerprint] Attributes:', result.attributes);
+            } catch (error) {
+                console.error('[Fingerprint] Error:', error);
+                const fingerprintInput = document.getElementById('fingerprint-id');
+                if (fingerprintInput) {
+                    fingerprintInput.value = 'Error loading fingerprint';
+                }
+            }
+        });
     </script>
     <style>
         /* Light theme (default) */
@@ -152,6 +178,26 @@
             line-height: 1.5;
         }
 
+        .split-textarea {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .split-textarea .textarea-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .split-textarea .textarea-panel label {
+            margin-bottom: 0.5rem;
+        }
+
+        .split-textarea textarea {
+            flex: 1;
+            min-height: 180px;
+        }
+
         button {
             width: 100%;
             padding: 0.875rem;
@@ -249,6 +295,13 @@
     <!-- Sticky Header with Language and Timers -->
     <div class="sticky-header">
         <div class="container" x-data="sessionTimers()" style="max-width: 1200px; padding: 1rem;">
+            <!-- Fingerprint ID Row -->
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="fingerprint-id" style="margin-bottom: 0.5rem;">Fingerprint ID</label>
+                <input type="text" id="fingerprint-id" readonly
+                       style="width: 100%; padding: 0.75rem 1rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 0.9rem;"
+                       value="Loading..." />
+            </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end;">
                 <!-- Language Selector with Flag -->
                 <div class="form-group" style="margin-bottom: 0;">
@@ -336,8 +389,16 @@
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
-            <label :for="config.id + '-body'">Request Body (JSON)</label>
-            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
         </div>
 
         <div class="form-group">
@@ -349,8 +410,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -380,8 +449,16 @@
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
-            <label :for="config.id + '-body'">Request Body (JSON)</label>
-            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
         </div>
 
         <div class="form-group">
@@ -394,8 +471,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -408,18 +493,7 @@
         body: {
             username: 'user@example.com',
             password: 'SecurePassword123!',
-            rememberMe: false,
-            fingerprintId: 'a7f5c8d9e3b1f2a4',
-            fingerprintData: JSON.stringify({
-                data: {
-                    ip: '89.89.23.93',
-                    country: {
-                        code: 'DE',
-                        name: 'Deutschland'
-                    },
-                    platform: 'web'
-                }
-            })
+            rememberMe: false
         },
         isLoginRunner: true
     })" @runner-success.window="handleGlobalSuccess($event.detail)" @registration-credentials.window="handleRegistrationCredentials($event.detail)">
@@ -459,8 +533,16 @@
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
-            <label :for="config.id + '-body'">Request Body (JSON)</label>
-            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
         </div>
 
         <div class="form-group">
@@ -472,8 +554,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -499,8 +589,22 @@
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
-            <label :for="config.id + '-body'">Request Body (JSON)</label>
-            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Headers for GET requests -->
+        <div class="form-group" x-show="method === 'GET'">
+            <label :for="config.id + '-headers'">Request Headers</label>
+            <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly style="min-height: 100px;"></textarea>
         </div>
 
         <div class="form-group">
@@ -513,8 +617,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -539,6 +651,12 @@
                 style="flex-grow: 1;">
         </div>
 
+        <!-- Headers for GET requests -->
+        <div class="form-group" x-show="method === 'GET'">
+            <label :for="config.id + '-headers'">Request Headers</label>
+            <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly style="min-height: 100px;"></textarea>
+        </div>
+
         <div class="form-group">
             <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
                 x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
@@ -549,8 +667,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -577,8 +703,16 @@
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
-            <label :for="config.id + '-body'">Request Body (JSON)</label>
-            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
         </div>
 
         <div class="form-group">
@@ -591,8 +725,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -620,8 +762,16 @@
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
-            <label :for="config.id + '-body'">Request Body (JSON)</label>
-            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
         </div>
 
         <div class="form-group">
@@ -633,8 +783,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -675,6 +833,12 @@
             </div>
         </div>
 
+        <!-- Headers display -->
+        <div class="form-group">
+            <label :for="config.id + '-headers'">Request Headers</label>
+            <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly style="min-height: 100px;"></textarea>
+        </div>
+
         <div class="form-group">
             <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading || !selectedSessionId"
                 x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
@@ -685,8 +849,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -711,6 +883,12 @@
                 style="flex-grow: 1;">
         </div>
 
+        <!-- Headers for GET requests -->
+        <div class="form-group" x-show="method === 'GET'">
+            <label :for="config.id + '-headers'">Request Headers</label>
+            <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly style="min-height: 100px;"></textarea>
+        </div>
+
         <div class="form-group">
             <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
                 x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
@@ -721,8 +899,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -800,8 +986,16 @@
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
-            <label :for="config.id + '-body'">Request Body (JSON)</label>
-            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
         </div>
 
         <div class="form-group">
@@ -814,8 +1008,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -893,8 +1095,16 @@
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
-            <label :for="config.id + '-body'">Request Body (JSON)</label>
-            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
         </div>
 
         <div class="form-group">
@@ -907,8 +1117,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -952,8 +1170,16 @@
         </div>
 
         <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
-            <label :for="config.id + '-body'">Request Body (JSON)</label>
-            <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
         </div>
 
         <div class="form-group">
@@ -966,8 +1192,16 @@
         </div>
 
         <div class="form-group">
-            <label :for="config.id + '-output'">Response</label>
-            <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1142,6 +1376,8 @@
                 method: config.method,
                 bodyStr: config.body ? JSON.stringify(config.body, null, 2) : '',
                 responseOutput: '',
+                requestHeadersStr: '',
+                decodedTokenStr: '',
                 statusMsg: '',
                 statusType: '',
                 isLoading: false,
@@ -1163,6 +1399,19 @@
                 useEmojiPassword: config.useEmojiPassword !== undefined ? config.useEmojiPassword : true,
 
                 init() {
+                    // Initialize headers display
+                    this.updateHeadersDisplay();
+
+                    // Watch for authToken changes to update headers display
+                    this.$watch('authToken', () => {
+                        this.updateHeadersDisplay();
+                    });
+
+                    // Watch for method changes to update headers display
+                    this.$watch('method', () => {
+                        this.updateHeadersDisplay();
+                    });
+
                     // Watch for session selection changes to update body (bulk delete)
                     if (this.config.isSessionRunner) {
                         this.$watch('selectedSessions', (value) => {
@@ -1188,18 +1437,9 @@
                             try {
                                 const currentBody = JSON.parse(this.bodyStr);
                                 if (value) {
-                                    // Add fingerprint fields
-                                    currentBody.fingerprintId = 'a7f5c8d9e3b1f2a4';
-                                    currentBody.fingerprintData = JSON.stringify({
-                                        data: {
-                                            ip: '89.89.23.93',
-                                            country: {
-                                                code: 'DE',
-                                                name: 'Deutschland'
-                                            },
-                                            platform: 'web'
-                                        }
-                                    });
+                                    // Add fingerprint fields using real fingerprint
+                                    currentBody.fingerprintId = window.__fingerprintId || '';
+                                    currentBody.fingerprintData = JSON.stringify(window.__fingerprintData || {});
                                 } else {
                                     // Remove fingerprint fields
                                     delete currentBody.fingerprintId;
@@ -1210,6 +1450,24 @@
                                 // If JSON is invalid, do nothing
                             }
                         });
+
+                        // Add fingerprint data once it's loaded (if sendFingerprint is enabled)
+                        const addFingerprintWhenReady = () => {
+                            if (window.__fingerprintId && this.sendFingerprint) {
+                                try {
+                                    const currentBody = JSON.parse(this.bodyStr);
+                                    currentBody.fingerprintId = window.__fingerprintId;
+                                    currentBody.fingerprintData = JSON.stringify(window.__fingerprintData || {});
+                                    this.bodyStr = JSON.stringify(currentBody, null, 2);
+                                } catch (e) {
+                                    // If JSON is invalid, do nothing
+                                }
+                            } else if (!window.__fingerprintId) {
+                                // Retry after a short delay if fingerprint not yet loaded
+                                setTimeout(addFingerprintWhenReady, 100);
+                            }
+                        };
+                        addFingerprintWhenReady();
                     }
                 },
 
@@ -1320,6 +1578,7 @@
 
                     this.isLoading = true;
                     this.responseOutput = '';
+                    this.decodedTokenStr = '';
                     this.statusMsg = '';
 
                     try {
@@ -1346,6 +1605,9 @@
                             }
                         }
 
+                        // Update the request headers display
+                        this.requestHeadersStr = JSON.stringify(options.headers, null, 2);
+
                         const response = await fetch(this.url, options);
                         console.log(`RAW [${this.config.title}]`, response);
 
@@ -1361,6 +1623,17 @@
                         }
 
                         this.responseOutput = result;
+
+                        // Decode access token from response if present
+                        if (jsonResponse && typeof jsonResponse === 'object') {
+                            const accessToken = jsonResponse.token || jsonResponse.accessToken || jsonResponse.jwt || jsonResponse.access_token;
+                            if (accessToken) {
+                                const decoded = decodeJWT(accessToken);
+                                if (decoded) {
+                                    this.decodedTokenStr = JSON.stringify(decoded, null, 2);
+                                }
+                            }
+                        }
 
                         if (response.ok) {
                             this.showStatus(`Success: ${response.status} ${response.statusText}`, 'success');
@@ -1416,6 +1689,19 @@
                 showStatus(msg, type) {
                     this.statusMsg = msg;
                     this.statusType = type;
+                },
+
+                updateHeadersDisplay() {
+                    const headers = {
+                        'Accept-Language': this.$store.language.current
+                    };
+                    if (this.authToken) {
+                        headers['Authorization'] = `Bearer ${this.authToken}`;
+                    }
+                    if (['POST', 'PUT', 'DELETE'].includes(this.method)) {
+                        headers['Content-Type'] = 'application/json; charset=UTF-8';
+                    }
+                    this.requestHeadersStr = JSON.stringify(headers, null, 2);
                 },
 
                 setBodyField(field, value) {
@@ -1488,17 +1774,8 @@
 
                         // Add fingerprint data if checkbox is checked
                         if (this.sendFingerprint) {
-                            loginBody.fingerprintId = 'a7f5c8d9e3b1f2a4';
-                            loginBody.fingerprintData = JSON.stringify({
-                                data: {
-                                    ip: '89.89.23.93',
-                                    country: {
-                                        code: 'DE',
-                                        name: 'Deutschland'
-                                    },
-                                    platform: 'web'
-                                }
-                            });
+                            loginBody.fingerprintId = window.__fingerprintId || '';
+                            loginBody.fingerprintData = JSON.stringify(window.__fingerprintData || {});
                         }
 
                         this.bodyStr = JSON.stringify(loginBody, null, 2);
