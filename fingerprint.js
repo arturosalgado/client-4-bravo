@@ -46,7 +46,6 @@ const FingerprintService = (function() {
             osVersion: getOSVersion(),
             screenWidth: screen.width,
             screenHeight: screen.height,
-            pixelRatio: window.devicePixelRatio || 1,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             language: navigator.language
         };
@@ -124,7 +123,6 @@ const FingerprintService = (function() {
      * @param {string} params.osVersion - Operating system version
      * @param {number} params.screenWidth - Screen width in pixels
      * @param {number} params.screenHeight - Screen height in pixels
-     * @param {number} params.pixelRatio - Device pixel ratio
      * @param {string} params.timezone - Timezone (e.g., 'America/New_York')
      * @param {string} params.language - Language/locale (e.g., 'en-US')
      * @param {string} [params.platform='admin'] - Application platform ('admin' or 'shell')
@@ -135,7 +133,6 @@ const FingerprintService = (function() {
         osVersion,
         screenWidth,
         screenHeight,
-        pixelRatio,
         timezone,
         language,
         platform = 'admin'
@@ -152,7 +149,6 @@ const FingerprintService = (function() {
             osVersion,
             screenWidth,
             screenHeight,
-            pixelRatio,
             timezone,
             language,
             platform

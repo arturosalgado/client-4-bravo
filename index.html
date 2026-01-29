@@ -46,6 +46,9 @@
                 window.__fingerprintData = result.attributes;
                 console.log('[Fingerprint] Hash:', fingerprintHash);
                 console.log('[Fingerprint] Attributes:', result.attributes);
+
+                // Notify components that fingerprint is ready
+                window.dispatchEvent(new CustomEvent('fingerprint-ready'));
             } catch (error) {
                 console.error('[Fingerprint] Error:', error);
                 const fingerprintInput = document.getElementById('fingerprint-id');
@@ -1412,6 +1415,13 @@
                         this.updateHeadersDisplay();
                     });
 
+                    // Listen for fingerprint ready event (for register runner)
+                    if (this.config.isRegisterRunner) {
+                        window.addEventListener('fingerprint-ready', () => {
+                            this.updateHeadersDisplay();
+                        });
+                    }
+
                     // Watch for session selection changes to update body (bulk delete)
                     if (this.config.isSessionRunner) {
                         this.$watch('selectedSessions', (value) => {
@@ -1593,6 +1603,11 @@
                             options.headers['Authorization'] = `Bearer ${this.authToken}`;
                         }
 
+                        // Add fingerprint header for register requests
+                        if (this.config.isRegisterRunner && window.__fingerprintId) {
+                            options.headers['X-Fingerprint'] = window.__fingerprintId;
+                        }
+
                         if (['POST', 'PUT', 'DELETE'].includes(this.method) && this.bodyStr) {
                             try {
                                 const requestBody = JSON.parse(this.bodyStr); // Validate
@@ -1697,6 +1712,9 @@
                     };
                     if (this.authToken) {
                         headers['Authorization'] = `Bearer ${this.authToken}`;
+                    }
+                    if (this.config.isRegisterRunner && window.__fingerprintId) {
+                        headers['X-Fingerprint'] = window.__fingerprintId;
                     }
                     if (['POST', 'PUT', 'DELETE'].includes(this.method)) {
                         headers['Content-Type'] = 'application/json; charset=UTF-8';
