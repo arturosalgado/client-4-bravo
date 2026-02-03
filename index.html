@@ -799,6 +799,107 @@
         </div>
     </div>
 
+    <!-- Runner: Switch Context (Tenant/Role) -->
+    <div class="container" x-data="switchContextRunner()" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1>Switch Context (Tenant/Role)</h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select id="context-switch-method" x-model="method" style="width: 100px;">
+                <option value="POST">POST</option>
+            </select>
+            <input type="url" id="context-switch-url" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <!-- Current Context Display -->
+        <div class="form-group" x-show="currentContext">
+            <label>Current Context</label>
+            <div style="padding: 0.75rem 1rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.85rem;">
+                    <div><strong>Company:</strong> <span x-text="currentContext?.companyName || 'N/A'"></span></div>
+                    <div><strong>Organization:</strong> <span x-text="currentContext?.organizationName || 'N/A'"></span></div>
+                    <div><strong>Role:</strong> <span x-text="currentContext?.roleName || currentContext?.roleCode || 'N/A'"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Context Selection -->
+        <div class="form-group" x-show="availableCompanies.length > 0">
+            <label>Select Company</label>
+            <select x-model="selectedCompanyUuid" @change="onCompanyChange"
+                    style="width: 100%; padding: 0.75rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                <option value="">-- Select a company --</option>
+                <template x-for="company in availableCompanies" :key="company.uuid">
+                    <option :value="company.uuid" x-text="company.name"></option>
+                </template>
+            </select>
+        </div>
+
+        <div class="form-group" x-show="selectedCompanyOrganizations.length > 0">
+            <label>Select Organization (Tenant)</label>
+            <select x-model="selectedTenantUuid" @change="onOrganizationChange"
+                    style="width: 100%; padding: 0.75rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                <option value="">-- Select an organization --</option>
+                <template x-for="org in selectedCompanyOrganizations" :key="org.uuid">
+                    <option :value="org.uuid" x-text="org.name"></option>
+                </template>
+            </select>
+        </div>
+
+        <div class="form-group" x-show="selectedOrganizationRoles.length > 0">
+            <label>Select Role</label>
+            <select x-model="selectedRoleUuid" @change="updateBody"
+                    style="width: 100%; padding: 0.75rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                <option value="">-- Select a role --</option>
+                <template x-for="role in selectedOrganizationRoles" :key="role.uuid">
+                    <option :value="role.uuid" x-text="role.name || role.code"></option>
+                </template>
+            </select>
+        </div>
+
+        <div class="form-group" x-show="availableCompanies.length === 0">
+            <div style="color: var(--text-secondary); font-style: italic; padding: 1rem; background-color: var(--input-bg); border-radius: 8px; text-align: center;">
+                No context options available. Login first to load available companies/organizations.
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label for="context-switch-body">Request Body (JSON)</label>
+                    <textarea id="context-switch-body" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label for="context-switch-headers">Request Headers</label>
+                    <textarea id="context-switch-headers" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <button id="context-switch-btn" @click="sendRequest" :disabled="isLoading || !selectedTenantUuid || !selectedRoleUuid"
+                x-text="isLoading ? 'Switching...' : 'Switch Context'"></button>
+            <div id="context-switch-status" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label for="context-switch-output">Response</label>
+                    <textarea id="context-switch-output" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label for="context-switch-token">Decoded Access Token</label>
+                    <textarea id="context-switch-token" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Runner: Revoke Single Session -->
     <div class="container" x-data="requestRunner({
         id: 'session-revoke',
@@ -1370,6 +1471,227 @@
                     const mins = Math.floor(seconds / 60);
                     const secs = seconds % 60;
                     return `${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+            }));
+
+            // Switch Context Runner component
+            Alpine.data('switchContextRunner', () => ({
+                url: 'http://localhost:3007/api/context/v1.0/switch',
+                method: 'POST',
+                bodyStr: JSON.stringify({ tenantUuid: '', roleUuid: '' }, null, 2),
+                responseOutput: '',
+                requestHeadersStr: '',
+                decodedTokenStr: '',
+                statusMsg: '',
+                statusType: '',
+                isLoading: false,
+                authToken: null,
+
+                // Available contexts from login response
+                availableCompanies: [],
+                currentContext: null,
+
+                // Selection state
+                selectedCompanyUuid: '',
+                selectedTenantUuid: '',
+                selectedRoleUuid: '',
+
+                // Computed arrays for cascading dropdowns
+                selectedCompanyOrganizations: [],
+                selectedOrganizationRoles: [],
+
+                init() {
+                    this.updateHeadersDisplay();
+
+                    this.$watch('authToken', () => {
+                        this.updateHeadersDisplay();
+                    });
+                },
+
+                handleGlobalSuccess(detail) {
+                    const data = detail.data;
+
+                    // Capture auth token from any runner
+                    if (typeof data === 'object' && data !== null) {
+                        const token = data.token || data.accessToken || data.jwt || data.access_token;
+                        if (token) {
+                            this.authToken = token;
+                            console.log('[switch-context] Token updated from', detail.runnerId);
+                        }
+
+                        // Capture available companies from login or switch context response
+                        if (data.availableCompanies && Array.isArray(data.availableCompanies)) {
+                            this.availableCompanies = data.availableCompanies;
+                            console.log('[switch-context] Available companies updated:', this.availableCompanies.length);
+
+                            // Reset selections when new context data arrives
+                            if (detail.runnerId !== 'context-switch') {
+                                this.selectedCompanyUuid = '';
+                                this.selectedTenantUuid = '';
+                                this.selectedRoleUuid = '';
+                                this.selectedCompanyOrganizations = [];
+                                this.selectedOrganizationRoles = [];
+                            }
+                        }
+
+                        // Capture current context from login or switch context response
+                        if (data.currentContext) {
+                            this.currentContext = data.currentContext;
+                            console.log('[switch-context] Current context updated:', this.currentContext);
+                        }
+                    }
+                },
+
+                onCompanyChange() {
+                    this.selectedTenantUuid = '';
+                    this.selectedRoleUuid = '';
+                    this.selectedOrganizationRoles = [];
+
+                    if (this.selectedCompanyUuid) {
+                        const company = this.availableCompanies.find(c => c.uuid === this.selectedCompanyUuid);
+                        this.selectedCompanyOrganizations = company?.organizations || [];
+                    } else {
+                        this.selectedCompanyOrganizations = [];
+                    }
+                    this.updateBody();
+                },
+
+                onOrganizationChange() {
+                    this.selectedRoleUuid = '';
+
+                    if (this.selectedTenantUuid) {
+                        const org = this.selectedCompanyOrganizations.find(o => o.uuid === this.selectedTenantUuid);
+                        this.selectedOrganizationRoles = org?.roles || [];
+                    } else {
+                        this.selectedOrganizationRoles = [];
+                    }
+                    this.updateBody();
+                },
+
+                updateBody() {
+                    const body = {
+                        tenantUuid: this.selectedTenantUuid || '',
+                        roleUuid: this.selectedRoleUuid || ''
+                    };
+                    this.bodyStr = JSON.stringify(body, null, 2);
+                },
+
+                updateHeadersDisplay() {
+                    const headers = {
+                        'Accept-Language': this.$store.language.current,
+                        'Content-Type': 'application/json; charset=UTF-8'
+                    };
+                    if (this.authToken) {
+                        headers['Authorization'] = `Bearer ${this.authToken}`;
+                    }
+                    this.requestHeadersStr = JSON.stringify(headers, null, 2);
+                },
+
+                showStatus(msg, type) {
+                    this.statusMsg = msg;
+                    this.statusType = type;
+                },
+
+                async sendRequest() {
+                    if (!this.url) {
+                        this.showStatus('Please enter a valid URL', 'error');
+                        return;
+                    }
+
+                    if (!this.selectedTenantUuid || !this.selectedRoleUuid) {
+                        this.showStatus('Please select both organization and role', 'error');
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    this.responseOutput = '';
+                    this.decodedTokenStr = '';
+                    this.statusMsg = '';
+
+                    try {
+                        const options = {
+                            method: this.method,
+                            headers: {
+                                'Accept-Language': this.$store.language.current,
+                                'Content-Type': 'application/json; charset=UTF-8'
+                            }
+                        };
+
+                        if (this.authToken) {
+                            options.headers['Authorization'] = `Bearer ${this.authToken}`;
+                        }
+
+                        try {
+                            const requestBody = JSON.parse(this.bodyStr);
+                            options.body = JSON.stringify(requestBody);
+                        } catch (e) {
+                            this.showStatus('Invalid JSON in request body', 'error');
+                            this.isLoading = false;
+                            return;
+                        }
+
+                        this.requestHeadersStr = JSON.stringify(options.headers, null, 2);
+
+                        const response = await fetch(this.url, options);
+                        console.log('RAW [Switch Context]', response);
+
+                        const contentType = response.headers.get('content-type');
+                        let result;
+                        let jsonResponse = null;
+
+                        if (contentType && contentType.includes('application/json')) {
+                            jsonResponse = await response.json();
+                            result = JSON.stringify(jsonResponse, null, 2);
+                        } else {
+                            result = await response.text();
+                        }
+
+                        this.responseOutput = result;
+
+                        // Decode access token from response if present
+                        if (jsonResponse && typeof jsonResponse === 'object') {
+                            const accessToken = jsonResponse.token || jsonResponse.accessToken || jsonResponse.jwt || jsonResponse.access_token;
+                            if (accessToken) {
+                                const decoded = decodeJWT(accessToken);
+                                if (decoded) {
+                                    this.decodedTokenStr = JSON.stringify(decoded, null, 2);
+                                }
+                            }
+                        }
+
+                        if (response.ok) {
+                            this.showStatus(`Success: ${response.status} ${response.statusText}`, 'success');
+
+                            // Update local state from response
+                            if (jsonResponse) {
+                                const token = jsonResponse.token || jsonResponse.accessToken;
+                                if (token) {
+                                    this.authToken = token;
+                                }
+                                if (jsonResponse.currentContext) {
+                                    this.currentContext = jsonResponse.currentContext;
+                                }
+                                if (jsonResponse.availableCompanies) {
+                                    this.availableCompanies = jsonResponse.availableCompanies;
+                                }
+                            }
+
+                            // Dispatch success event for other runners
+                            this.$dispatch('runner-success', {
+                                runnerId: 'context-switch',
+                                data: jsonResponse || result
+                            });
+                        } else {
+                            this.showStatus(`Error: ${response.status} ${response.statusText}`, 'error');
+                        }
+
+                    } catch (error) {
+                        console.error(error);
+                        this.responseOutput = error.toString();
+                        this.showStatus('Network Error', 'error');
+                    } finally {
+                        this.isLoading = false;
+                    }
                 }
             }));
 
