@@ -1925,11 +1925,6 @@
                             options.headers['Authorization'] = `Bearer ${this.authToken}`;
                         }
 
-                        // Add fingerprint header for register requests
-                        if (this.config.isRegisterRunner && window.__fingerprintId) {
-                            options.headers['X-Fingerprint'] = window.__fingerprintId;
-                        }
-
                         if (['POST', 'PUT', 'DELETE'].includes(this.method) && this.bodyStr) {
                             try {
                                 const requestBody = JSON.parse(this.bodyStr); // Validate
@@ -2034,9 +2029,6 @@
                     };
                     if (this.authToken) {
                         headers['Authorization'] = `Bearer ${this.authToken}`;
-                    }
-                    if (this.config.isRegisterRunner && window.__fingerprintId) {
-                        headers['X-Fingerprint'] = window.__fingerprintId;
                     }
                     if (['POST', 'PUT', 'DELETE'].includes(this.method)) {
                         headers['Content-Type'] = 'application/json; charset=UTF-8';
