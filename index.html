@@ -101,7 +101,7 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding: 120px 20px 40px 20px; /* Extra top padding for sticky header */
+            padding: 160px 20px 40px 20px; /* Extra top padding for sticky header + nav menu */
             gap: 2rem;
         }
 
@@ -126,6 +126,7 @@
             width: 100%;
             max-width: 1200px;
             border: 1px solid var(--border);
+            scroll-margin-top: 170px;
         }
 
         h1 {
@@ -290,6 +291,36 @@
             border-color: #ef4444;
             color: #ef4444;
         }
+
+        /* Navigation Menu */
+        .nav-menu {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            padding: 0.5rem 0 0 0;
+            margin-top: 0.75rem;
+            border-top: 1px solid var(--border);
+            justify-content: center;
+        }
+
+        .nav-menu a {
+            padding: 0.3rem 0.65rem;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 6px;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .nav-menu a:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.08);
+        }
     </style>
 </head>
 
@@ -343,11 +374,27 @@
                     </div>
                 </div>
             </div>
+            <!-- Quick Navigation Menu -->
+            <nav class="nav-menu">
+                <a href="#section-register">Register</a>
+                <a href="#section-confirm-email">Confirm Email</a>
+                <a href="#section-login">Login</a>
+                <a href="#section-profile">Get Profile</a>
+                <a href="#section-sessions">Get Sessions</a>
+                <a href="#section-logout">Logout</a>
+                <a href="#section-refresh">Refresh Token</a>
+                <a href="#section-context">Switch Context</a>
+                <a href="#section-revoke">Revoke Session</a>
+                <a href="#section-preferences">Get Preferences</a>
+                <a href="#section-user-prefs">User Preferences</a>
+                <a href="#section-tenant-prefs">Tenant Preferences</a>
+                <a href="#section-bulk-delete">Bulk Delete</a>
+            </nav>
         </div>
     </div>
 
     <!-- Runner 1: Register -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-register" class="container" x-data="requestRunner({
         id: 'auth-register',
         title: 'Register',
         url: 'http://localhost:3007/api/auth/v1.0/register',
@@ -427,7 +474,7 @@
     </div>
 
     <!-- Runner 2: Confirm Email -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-confirm-email" class="container" x-data="requestRunner({
         id: 'confirm-email',
         title: 'Confirm Email',
         url: 'http://localhost:3007/api/auth/v1.0/confirm-email',
@@ -488,7 +535,7 @@
     </div>
 
     <!-- Runner 3: Login -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-login" class="container" x-data="requestRunner({
         id: 'auth-login',
         title: 'Login',
         url: 'http://localhost:3007/api/auth/v1.0/login',
@@ -571,7 +618,7 @@
     </div>
 
     <!-- Runner 2: Get Profile (Protected) -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-profile" class="container" x-data="requestRunner({
         id: 'get-profile',
         title: 'Get Profile (Protected Endpoint)',
         url: 'http://localhost:3007/api/auth/v1.0/profile',
@@ -634,7 +681,7 @@
     </div>
 
     <!-- Runner: Get Active Sessions -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-sessions" class="container" x-data="requestRunner({
         id: 'get-sessions',
         title: 'Get Active Sessions (All Devices)',
         url: 'http://localhost:3007/api/auth/v1.0/sessions',
@@ -684,7 +731,7 @@
     </div>
 
     <!-- Runner: Logout -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-logout" class="container" x-data="requestRunner({
         id: 'auth-logout',
         title: 'Logout (Terminate Current Session)',
         url: 'http://localhost:3007/api/auth/v1.0/logout',
@@ -742,7 +789,7 @@
     </div>
 
     <!-- Runner: Refresh Token -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-refresh" class="container" x-data="requestRunner({
         id: 'auth-refresh',
         title: 'Refresh Token (Extend Session)',
         url: 'http://localhost:3007/api/auth/v1.0/refresh',
@@ -800,7 +847,7 @@
     </div>
 
     <!-- Runner: Switch Context (Tenant/Role) -->
-    <div class="container" x-data="switchContextRunner()" @runner-success.window="handleGlobalSuccess($event.detail)">
+    <div id="section-context" class="container" x-data="switchContextRunner()" @runner-success.window="handleGlobalSuccess($event.detail)">
 
         <h1>Switch Context (Tenant/Role)</h1>
 
@@ -901,7 +948,7 @@
     </div>
 
     <!-- Runner: Revoke Single Session -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-revoke" class="container" x-data="requestRunner({
         id: 'session-revoke',
         title: 'Revoke Specific Session',
         url: 'http://localhost:3007/api/auth/v1.0/sessions/',
@@ -967,7 +1014,7 @@
     </div>
 
     <!-- Runner: Get Effective Preferences -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-preferences" class="container" x-data="requestRunner({
         id: 'get-preferences',
         title: 'Get Effective Preferences',
         url: 'http://localhost:3007/api/auth/v1.0/preferences',
@@ -1017,7 +1064,7 @@
     </div>
 
     <!-- Runner: Update User Preferences (Theme) -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-user-prefs" class="container" x-data="requestRunner({
         id: 'user-preferences',
         title: 'Update User Preferences',
         url: 'http://localhost:3007/api/auth/v1.0/user/preferences',
@@ -1126,7 +1173,7 @@
     </div>
 
     <!-- Runner: Update Tenant Preferences (Theme) -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-tenant-prefs" class="container" x-data="requestRunner({
         id: 'tenant-preferences',
         title: 'Update Tenant Preferences',
         url: 'http://localhost:3007/api/auth/v1.0/tenant/preferences',
@@ -1235,7 +1282,7 @@
     </div>
 
     <!-- Runner 3: Bulk Delete -->
-    <div class="container" x-data="requestRunner({
+    <div id="section-bulk-delete" class="container" x-data="requestRunner({
         id: 'session-delete',
         title: 'Bulk Delete Sessions',
         url: 'http://localhost:3007/api/auth/v1.0/sessions/bulk',
