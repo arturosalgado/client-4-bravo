@@ -9,12 +9,15 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="fingerprint.js"></script>
     <script>
-        // Detect system theme and apply immediately (before page renders)
+        // Detect and apply theme immediately (before page renders)
         (function() {
-            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = isDark ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', theme);
-            console.log('[Theme] Initial system preference:', theme);
+            const getSystemTheme = () =>
+                window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            const selectedTheme = localStorage.getItem('selectedTheme') || 'system';
+            const resolvedTheme = selectedTheme === 'system' ? getSystemTheme() : selectedTheme;
+            document.documentElement.setAttribute('data-theme', resolvedTheme);
+            window.__selectedTheme = selectedTheme;
+            console.log('[Theme] Initial preference:', selectedTheme, '-> Applied:', resolvedTheme);
 
             // Detect locale and timezone
             const supportedLocales = ['en-US', 'es-US', 'es-MX'];
@@ -101,7 +104,7 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding: 160px 20px 40px 20px; /* Extra top padding for sticky header + nav menu */
+            padding: 120px 20px 40px 20px; /* Top padding for shorter sticky header */
             gap: 2rem;
         }
 
@@ -113,7 +116,7 @@
             z-index: 1000;
             background-color: var(--bg-color);
             border-bottom: 1px solid var(--border);
-            padding: 20px;
+            padding: 12px 20px;
             display: flex;
             justify-content: center;
         }
@@ -126,7 +129,7 @@
             width: 100%;
             max-width: 1200px;
             border: 1px solid var(--border);
-            scroll-margin-top: 170px;
+            scroll-margin-top: 130px;
         }
 
         h1 {
@@ -321,6 +324,41 @@
             border-color: var(--accent);
             background: rgba(56, 189, 248, 0.08);
         }
+
+        /* Tab Menu */
+        .tab-menu {
+            display: flex;
+            gap: 0.25rem;
+            padding: 0.5rem 0 0 0;
+            margin-top: 0.75rem;
+            border-top: 1px solid var(--border);
+            justify-content: center;
+        }
+
+        .tab-menu button {
+            width: auto;
+            padding: 0.4rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .tab-menu button:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .tab-menu button.active {
+            color: var(--btn-text);
+            background: var(--accent);
+            border-color: var(--accent);
+        }
     </style>
 </head>
 
@@ -328,15 +366,8 @@
 
     <!-- Sticky Header with Language and Timers -->
     <div class="sticky-header">
-        <div class="container" x-data="sessionTimers()" style="max-width: 1200px; padding: 1rem;">
-            <!-- Fingerprint ID Row -->
-            <div class="form-group" style="margin-bottom: 1rem;">
-                <label for="fingerprint-id" style="margin-bottom: 0.5rem;">Fingerprint ID</label>
-                <input type="text" id="fingerprint-id" readonly
-                       style="width: 100%; padding: 0.75rem 1rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 0.9rem;"
-                       value="Loading..." />
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end;">
+        <div class="container" x-data="sessionTimers()" style="max-width: 1200px; padding: 0.75rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 1rem; align-items: end;">
                 <!-- Language Selector with Flag -->
                 <div class="form-group" style="margin-bottom: 0;">
                     <label for="language-selector" style="margin-bottom: 0.5rem;">
@@ -348,6 +379,17 @@
                         <option value="en-US">🇺🇸 English (en-US)</option>
                         <option value="es-US">🇺🇸 Español (es-US)</option>
                         <option value="es-MX">🇲🇽 Español (es-MX)</option>
+                    </select>
+                </div>
+
+                <!-- Theme Selector -->
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="theme-selector" style="margin-bottom: 0.5rem;">Theme</label>
+                    <select id="theme-selector" x-model="$store.theme.current" @change="$store.theme.save()"
+                            style="width: 100%; padding: 0.75rem; background-color: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+                        <option value="system">System</option>
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
                     </select>
                 </div>
 
@@ -374,27 +416,42 @@
                     </div>
                 </div>
             </div>
-            <!-- Quick Navigation Menu -->
-            <nav class="nav-menu">
+            <!-- Tab Menu -->
+            <nav class="tab-menu">
+                <button :class="{ 'active': $store.tabs.active === 'auth' }" @click="$store.tabs.active = 'auth'">Auth</button>
+                <button :class="{ 'active': $store.tabs.active === 'sessions' }" @click="$store.tabs.active = 'sessions'">Sessions</button>
+                <button :class="{ 'active': $store.tabs.active === 'preferences' }" @click="$store.tabs.active = 'preferences'">Preferences</button>
+                <button :class="{ 'active': $store.tabs.active === 'tenant' }" @click="$store.tabs.active = 'tenant'">Tenant</button>
+            </nav>
+            <!-- Sub-navigation per tab -->
+            <nav class="nav-menu" x-show="$store.tabs.active === 'auth'">
                 <a href="#section-register">Register</a>
                 <a href="#section-confirm-email">Confirm Email</a>
                 <a href="#section-login">Login</a>
-                <a href="#section-profile">Get Profile</a>
-                <a href="#section-sessions">Get Sessions</a>
                 <a href="#section-logout">Logout</a>
                 <a href="#section-refresh">Refresh Token</a>
+            </nav>
+            <nav class="nav-menu" x-show="$store.tabs.active === 'sessions'">
+                <a href="#section-profile">Get Profile</a>
+                <a href="#section-sessions">Get Sessions</a>
                 <a href="#section-context">Switch Context</a>
                 <a href="#section-revoke">Revoke Session</a>
+                <a href="#section-bulk-delete">Bulk Delete</a>
+            </nav>
+            <nav class="nav-menu" x-show="$store.tabs.active === 'preferences'">
                 <a href="#section-preferences">Get Preferences</a>
                 <a href="#section-user-prefs">User Preferences</a>
-                <a href="#section-tenant-prefs">Tenant Preferences</a>
-                <a href="#section-bulk-delete">Bulk Delete</a>
+            </nav>
+            <nav class="nav-menu" x-show="$store.tabs.active === 'tenant'">
+                <a href="#section-tenant-prefs-get">Get Tenant Prefs</a>
+                <a href="#section-tenant-prefs">Update Tenant Prefs</a>
+                <a href="#section-tenant-prefs-delete">Delete Tenant Prefs</a>
             </nav>
         </div>
     </div>
 
     <!-- Runner 1: Register -->
-    <div id="section-register" class="container" x-data="requestRunner({
+    <div id="section-register" class="container" x-show="$store.tabs.active === 'auth'" x-data="requestRunner({
         id: 'auth-register',
         title: 'Register',
         url: 'http://localhost:3007/api/auth/v1.0/register',
@@ -474,7 +531,7 @@
     </div>
 
     <!-- Runner 2: Confirm Email -->
-    <div id="section-confirm-email" class="container" x-data="requestRunner({
+    <div id="section-confirm-email" class="container" x-show="$store.tabs.active === 'auth'" x-data="requestRunner({
         id: 'confirm-email',
         title: 'Confirm Email',
         url: 'http://localhost:3007/api/auth/v1.0/confirm-email',
@@ -535,7 +592,7 @@
     </div>
 
     <!-- Runner 3: Login -->
-    <div id="section-login" class="container" x-data="requestRunner({
+    <div id="section-login" class="container" x-show="$store.tabs.active === 'auth'" x-data="requestRunner({
         id: 'auth-login',
         title: 'Login',
         url: 'http://localhost:3007/api/auth/v1.0/login',
@@ -617,8 +674,8 @@
         </div>
     </div>
 
-    <!-- Runner 2: Get Profile (Protected) -->
-    <div id="section-profile" class="container" x-data="requestRunner({
+    <!-- Runner: Get Profile (Protected) -->
+    <div id="section-profile" class="container" x-show="$store.tabs.active === 'sessions'" x-data="requestRunner({
         id: 'get-profile',
         title: 'Get Profile (Protected Endpoint)',
         url: 'http://localhost:3007/api/auth/v1.0/profile',
@@ -681,7 +738,7 @@
     </div>
 
     <!-- Runner: Get Active Sessions -->
-    <div id="section-sessions" class="container" x-data="requestRunner({
+    <div id="section-sessions" class="container" x-show="$store.tabs.active === 'sessions'" x-data="requestRunner({
         id: 'get-sessions',
         title: 'Get Active Sessions (All Devices)',
         url: 'http://localhost:3007/api/auth/v1.0/sessions',
@@ -731,7 +788,7 @@
     </div>
 
     <!-- Runner: Logout -->
-    <div id="section-logout" class="container" x-data="requestRunner({
+    <div id="section-logout" class="container" x-show="$store.tabs.active === 'auth'" x-data="requestRunner({
         id: 'auth-logout',
         title: 'Logout (Terminate Current Session)',
         url: 'http://localhost:3007/api/auth/v1.0/logout',
@@ -789,7 +846,7 @@
     </div>
 
     <!-- Runner: Refresh Token -->
-    <div id="section-refresh" class="container" x-data="requestRunner({
+    <div id="section-refresh" class="container" x-show="$store.tabs.active === 'auth'" x-data="requestRunner({
         id: 'auth-refresh',
         title: 'Refresh Token (Extend Session)',
         url: 'http://localhost:3007/api/auth/v1.0/refresh',
@@ -847,7 +904,7 @@
     </div>
 
     <!-- Runner: Switch Context (Tenant/Role) -->
-    <div id="section-context" class="container" x-data="switchContextRunner()" @runner-success.window="handleGlobalSuccess($event.detail)">
+    <div id="section-context" class="container" x-show="$store.tabs.active === 'sessions'" x-data="switchContextRunner()" @runner-success.window="handleGlobalSuccess($event.detail)">
 
         <h1>Switch Context (Tenant/Role)</h1>
 
@@ -948,7 +1005,7 @@
     </div>
 
     <!-- Runner: Revoke Single Session -->
-    <div id="section-revoke" class="container" x-data="requestRunner({
+    <div id="section-revoke" class="container" x-show="$store.tabs.active === 'sessions'" x-data="requestRunner({
         id: 'session-revoke',
         title: 'Revoke Specific Session',
         url: 'http://localhost:3007/api/auth/v1.0/sessions/',
@@ -1014,7 +1071,7 @@
     </div>
 
     <!-- Runner: Get Effective Preferences -->
-    <div id="section-preferences" class="container" x-data="requestRunner({
+    <div id="section-preferences" class="container" x-show="$store.tabs.active === 'preferences'" x-data="requestRunner({
         id: 'get-preferences',
         title: 'Get Effective Preferences',
         url: 'http://localhost:3007/api/auth/v1.0/preferences',
@@ -1064,7 +1121,7 @@
     </div>
 
     <!-- Runner: Update User Preferences (Theme) -->
-    <div id="section-user-prefs" class="container" x-data="requestRunner({
+    <div id="section-user-prefs" class="container" x-show="$store.tabs.active === 'preferences'" x-data="requestRunner({
         id: 'user-preferences',
         title: 'Update User Preferences',
         url: 'http://localhost:3007/api/auth/v1.0/user/preferences',
@@ -1172,8 +1229,58 @@
         </div>
     </div>
 
-    <!-- Runner: Update Tenant Preferences (Theme) -->
-    <div id="section-tenant-prefs" class="container" x-data="requestRunner({
+    <!-- Runner: Get Tenant Preferences -->
+    <div id="section-tenant-prefs-get" class="container" x-show="$store.tabs.active === 'tenant'" x-data="requestRunner({
+        id: 'tenant-preferences-get',
+        title: 'Get Tenant Preferences',
+        url: 'http://localhost:3007/api/auth/v1.0/tenant/preferences',
+        method: 'GET'
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <!-- Headers for GET requests -->
+        <div class="form-group" x-show="method === 'GET'">
+            <label :for="config.id + '-headers'">Request Headers</label>
+            <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly style="min-height: 100px;"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Runner: Update Tenant Preferences -->
+    <div id="section-tenant-prefs" class="container" x-show="$store.tabs.active === 'tenant'" x-data="requestRunner({
         id: 'tenant-preferences',
         title: 'Update Tenant Preferences',
         url: 'http://localhost:3007/api/auth/v1.0/tenant/preferences',
@@ -1281,8 +1388,59 @@
         </div>
     </div>
 
-    <!-- Runner 3: Bulk Delete -->
-    <div id="section-bulk-delete" class="container" x-data="requestRunner({
+    <!-- Runner: Delete Tenant Preferences -->
+    <div id="section-tenant-prefs-delete" class="container" x-show="$store.tabs.active === 'tenant'" x-data="requestRunner({
+        id: 'tenant-preferences-delete',
+        title: 'Delete Tenant Preferences',
+        url: 'http://localhost:3007/api/auth/v1.0/tenant/preferences',
+        method: 'DELETE'
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <!-- Headers display -->
+        <div class="form-group">
+            <label :for="config.id + '-headers'">Request Headers</label>
+            <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly style="min-height: 100px;"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                style="background-color: #ef4444;"
+                x-text="isLoading ? 'Deleting...' : 'Delete Tenant Preferences'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Runner: Bulk Delete -->
+    <div id="section-bulk-delete" class="container" x-show="$store.tabs.active === 'sessions'" x-data="requestRunner({
         id: 'session-delete',
         title: 'Bulk Delete Sessions',
         url: 'http://localhost:3007/api/auth/v1.0/sessions/bulk',
@@ -1372,14 +1530,43 @@
             }
         }
 
-        // Listen for system theme changes
+        // Listen for system theme changes (only when using "system" theme)
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if ((localStorage.getItem('selectedTheme') || 'system') !== 'system') {
+                return;
+            }
             const theme = e.matches ? 'dark' : 'light';
             document.documentElement.setAttribute('data-theme', theme);
             console.log('[Theme] System preference changed to:', theme);
         });
 
         document.addEventListener('alpine:init', () => {
+            Alpine.store('tabs', {
+                active: 'auth'
+            });
+
+            Alpine.store('theme', {
+                current: localStorage.getItem('selectedTheme') || window.__selectedTheme || 'system',
+
+                getSystemTheme() {
+                    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                },
+
+                apply() {
+                    const resolvedTheme = this.current === 'system' ? this.getSystemTheme() : this.current;
+                    document.documentElement.setAttribute('data-theme', resolvedTheme);
+                },
+
+                save() {
+                    localStorage.setItem('selectedTheme', this.current);
+                    this.apply();
+                    console.log('[Theme] Changed to:', this.current);
+                }
+            });
+
+            // Ensure applied theme matches stored selection after Alpine starts
+            Alpine.store('theme').apply();
+
             // Global language store
             Alpine.store('language', {
                 current: localStorage.getItem('selectedLanguage') || window.__detectedLocale || 'en-US',
@@ -1625,7 +1812,9 @@
 
                 updateHeadersDisplay() {
                     const headers = {
-                        'Accept-Language': this.$store.language.current,
+                        'Accept-Language': sessionStorage.getItem('serverLocale') || this.$store.language.current,
+                        'X-Locale': sessionStorage.getItem('serverLocale') || this.$store.language.current,
+                        'X-Theme': sessionStorage.getItem('serverTheme') || this.$store.theme.current,
                         'Content-Type': 'application/json; charset=UTF-8'
                     };
                     if (this.authToken) {
@@ -1659,7 +1848,9 @@
                         const options = {
                             method: this.method,
                             headers: {
-                                'Accept-Language': this.$store.language.current,
+                                'Accept-Language': sessionStorage.getItem('serverLocale') || this.$store.language.current,
+                                'X-Locale': sessionStorage.getItem('serverLocale') || this.$store.language.current,
+                                'X-Theme': sessionStorage.getItem('serverTheme') || this.$store.theme.current,
                                 'Content-Type': 'application/json; charset=UTF-8'
                             }
                         };
@@ -1781,6 +1972,14 @@
 
                     // Watch for method changes to update headers display
                     this.$watch('method', () => {
+                        this.updateHeadersDisplay();
+                    });
+
+                    // Watch for language/theme store changes to update headers display
+                    this.$watch('$store.language.current', () => {
+                        this.updateHeadersDisplay();
+                    });
+                    this.$watch('$store.theme.current', () => {
                         this.updateHeadersDisplay();
                     });
 
@@ -1964,7 +2163,9 @@
                         const options = {
                             method: this.method,
                             headers: {
-                                'Accept-Language': this.$store.language.current
+                                'Accept-Language': sessionStorage.getItem('serverLocale') || this.$store.language.current,
+                                'X-Locale': sessionStorage.getItem('serverLocale') || this.$store.language.current,
+                                'X-Theme': sessionStorage.getItem('serverTheme') || this.$store.theme.current
                             }
                         };
 
@@ -2017,9 +2218,35 @@
                         if (response.ok) {
                             this.showStatus(`Success: ${response.status} ${response.statusText}`, 'success');
 
-                            // Clear auth token on logout
+                            // Clear auth token and server preferences on logout
                             if (this.config.isLogoutRunner) {
                                 this.authToken = null;
+                                sessionStorage.removeItem('serverLocale');
+                                sessionStorage.removeItem('serverTheme');
+                                sessionStorage.removeItem('serverTimezone');
+                                console.log('[Preferences] Cleared server preferences on logout');
+                            }
+
+                            // On login success, capture server preferences and apply to UI
+                            if (this.config.isLoginRunner && jsonResponse && jsonResponse.preferences) {
+                                const prefs = jsonResponse.preferences;
+                                if (prefs.language) {
+                                    sessionStorage.setItem('serverLocale', prefs.language);
+                                    this.$store.language.current = prefs.language;
+                                    console.log('[Preferences] Server language:', prefs.language);
+                                }
+                                if (prefs.theme) {
+                                    sessionStorage.setItem('serverTheme', prefs.theme);
+                                    this.$store.theme.current = prefs.theme;
+                                    this.$store.theme.apply();
+                                    console.log('[Preferences] Server theme:', prefs.theme);
+                                }
+                                if (prefs.timezone) {
+                                    sessionStorage.setItem('serverTimezone', prefs.timezone);
+                                    console.log('[Preferences] Server timezone:', prefs.timezone);
+                                }
+                                // Update headers display to reflect server preferences
+                                this.updateHeadersDisplay();
                             }
 
                             // Dispatch success event for other runners
@@ -2072,7 +2299,9 @@
 
                 updateHeadersDisplay() {
                     const headers = {
-                        'Accept-Language': this.$store.language.current
+                        'Accept-Language': sessionStorage.getItem('serverLocale') || this.$store.language.current,
+                        'X-Locale': sessionStorage.getItem('serverLocale') || this.$store.language.current,
+                        'X-Theme': sessionStorage.getItem('serverTheme') || this.$store.theme.current
                     };
                     if (this.authToken) {
                         headers['Authorization'] = `Bearer ${this.authToken}`;
