@@ -1074,7 +1074,7 @@
     <div id="section-preferences" class="container" x-show="$store.tabs.active === 'preferences'" x-data="requestRunner({
         id: 'get-preferences',
         title: 'Get Effective Preferences',
-        url: 'http://localhost:3007/api/auth/v1.0/preferences',
+        url: 'http://localhost:3007/api/auth/v1.0/user/preferences',
         method: 'GET'
     })" @runner-success.window="handleGlobalSuccess($event.detail)">
 
@@ -1125,7 +1125,7 @@
         id: 'user-preferences',
         title: 'Update User Preferences',
         url: 'http://localhost:3007/api/auth/v1.0/user/preferences',
-        method: 'PUT',
+        method: 'PATCH',
         body: {
             language: 'en-US',
             theme: 'dark',
@@ -1140,7 +1140,7 @@
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
                 <option value="DELETE">DELETE</option>
-                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
             </select>
             <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
                 style="flex-grow: 1;">
@@ -1193,7 +1193,7 @@
             </div>
         </div>
 
-        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+        <div class="form-group" x-show="['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)">
             <div class="split-textarea">
                 <div class="textarea-panel">
                     <label :for="config.id + '-body'">Request Body (JSON)</label>
@@ -1209,6 +1209,57 @@
         <div class="form-group">
             <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
                 x-text="isLoading ? 'Fetching...' : 'Send Request'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Runner: Clear User Preferences -->
+    <div id="section-user-prefs-delete" class="container" x-show="$store.tabs.active === 'preferences'" x-data="requestRunner({
+        id: 'user-preferences-delete',
+        title: 'Clear User Preferences',
+        url: 'http://localhost:3007/api/auth/v1.0/user/preferences',
+        method: 'DELETE'
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <!-- Headers display -->
+        <div class="form-group">
+            <label :for="config.id + '-headers'">Request Headers</label>
+            <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly style="min-height: 100px;"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                style="background-color: #ef4444;"
+                x-text="isLoading ? 'Clearing...' : 'Clear User Preferences'"></button>
             <div :id="config.id + '-status'" class="status" :class="statusType">
                 <span x-text="statusMsg"></span>
                 <span x-show="authToken" class="token-badge">TOKEN SET</span>
@@ -1284,11 +1335,11 @@
         id: 'tenant-preferences',
         title: 'Update Tenant Preferences',
         url: 'http://localhost:3007/api/auth/v1.0/tenant/preferences',
-        method: 'PUT',
+        method: 'PATCH',
         body: {
-            defaultLanguage: 'en-US',
-            defaultTheme: 'dark',
-            defaultTimezone: 'America/New_York'
+            language: 'en-US',
+            theme: 'dark',
+            timezone: 'America/New_York'
         }
     })" @runner-success.window="handleGlobalSuccess($event.detail)">
 
@@ -1300,6 +1351,7 @@
                 <option value="POST">POST</option>
                 <option value="DELETE">DELETE</option>
                 <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
             </select>
             <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
                 style="flex-grow: 1;">
@@ -1309,11 +1361,11 @@
         <div class="form-group">
             <label style="margin-bottom: 0.5rem;">Default Theme</label>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" @click="setBodyField('defaultTheme', 'light')"
+                <button type="button" @click="setBodyField('theme', 'light')"
                     style="background-color: #f8fafc; color: #0f172a; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
                     ☀️ Light
                 </button>
-                <button type="button" @click="setBodyField('defaultTheme', 'dark')"
+                <button type="button" @click="setBodyField('theme', 'dark')"
                     style="background-color: #1e293b; color: #f8fafc; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem; border: 1px solid var(--border);">
                     🌙 Dark
                 </button>
@@ -1323,15 +1375,15 @@
         <div class="form-group">
             <label style="margin-bottom: 0.5rem;">Default Language</label>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" @click="setBodyField('defaultLanguage', 'en-US')"
+                <button type="button" @click="setBodyField('language', 'en-US')"
                     style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
                     🇺🇸 en-US
                 </button>
-                <button type="button" @click="setBodyField('defaultLanguage', 'es-US')"
+                <button type="button" @click="setBodyField('language', 'es-US')"
                     style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
                     🇺🇸 es-US
                 </button>
-                <button type="button" @click="setBodyField('defaultLanguage', 'es-MX')"
+                <button type="button" @click="setBodyField('language', 'es-MX')"
                     style="background-color: #818cf8; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
                     🇲🇽 es-MX
                 </button>
@@ -1341,18 +1393,18 @@
         <div class="form-group">
             <label style="margin-bottom: 0.5rem;">Default Timezone</label>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" @click="setBodyField('defaultTimezone', 'America/New_York')"
+                <button type="button" @click="setBodyField('timezone', 'America/New_York')"
                     style="background-color: #22c55e; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
                     🗽 New York
                 </button>
-                <button type="button" @click="setBodyField('defaultTimezone', 'America/Los_Angeles')"
+                <button type="button" @click="setBodyField('timezone', 'America/Los_Angeles')"
                     style="background-color: #22c55e; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
                     🌴 Los Angeles
                 </button>
             </div>
         </div>
 
-        <div class="form-group" x-show="['POST', 'PUT', 'DELETE'].includes(method)">
+        <div class="form-group" x-show="['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)">
             <div class="split-textarea">
                 <div class="textarea-panel">
                     <label :for="config.id + '-body'">Request Body (JSON)</label>
@@ -1552,8 +1604,12 @@
                     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                 },
 
+                getEffectiveTheme() {
+                    return this.current === 'system' ? this.getSystemTheme() : this.current;
+                },
+
                 apply() {
-                    const resolvedTheme = this.current === 'system' ? this.getSystemTheme() : this.current;
+                    const resolvedTheme = this.getEffectiveTheme();
                     document.documentElement.setAttribute('data-theme', resolvedTheme);
                 },
 
@@ -1814,7 +1870,7 @@
                     const headers = {
                         'Accept-Language': sessionStorage.getItem('serverLocale') || this.$store.language.current,
                         'X-Locale': sessionStorage.getItem('serverLocale') || this.$store.language.current,
-                        'X-Theme': sessionStorage.getItem('serverTheme') || this.$store.theme.current,
+                        'X-Theme': this.$store.theme.getEffectiveTheme(),
                         'Content-Type': 'application/json; charset=UTF-8'
                     };
                     if (this.authToken) {
@@ -1850,7 +1906,7 @@
                             headers: {
                                 'Accept-Language': sessionStorage.getItem('serverLocale') || this.$store.language.current,
                                 'X-Locale': sessionStorage.getItem('serverLocale') || this.$store.language.current,
-                                'X-Theme': sessionStorage.getItem('serverTheme') || this.$store.theme.current,
+                                'X-Theme': this.$store.theme.getEffectiveTheme(),
                                 'Content-Type': 'application/json; charset=UTF-8'
                             }
                         };
@@ -2148,6 +2204,30 @@
                     }
                 },
 
+                applyPreferencesFromResponse(responseData) {
+                    if (!responseData || typeof responseData !== 'object') return;
+
+                    const directPrefs = (responseData.theme || responseData.language || responseData.timezone) ? responseData : null;
+                    const prefs = responseData.preferences || responseData.data?.preferences || directPrefs;
+                    if (!prefs || typeof prefs !== 'object') return;
+
+                    if (prefs.language) {
+                        sessionStorage.setItem('serverLocale', prefs.language);
+                        this.$store.language.current = prefs.language;
+                    }
+
+                    if (prefs.theme) {
+                        sessionStorage.setItem('serverTheme', prefs.theme);
+                        this.$store.theme.current = prefs.theme;
+                        this.$store.theme.save();
+                        console.log('[Preferences] Applied server theme:', prefs.theme);
+                    }
+
+                    if (prefs.timezone) {
+                        sessionStorage.setItem('serverTimezone', prefs.timezone);
+                    }
+                },
+
                 async sendRequest() {
                     if (!this.url) {
                         this.showStatus('Please enter a valid URL', 'error');
@@ -2165,7 +2245,7 @@
                             headers: {
                                 'Accept-Language': sessionStorage.getItem('serverLocale') || this.$store.language.current,
                                 'X-Locale': sessionStorage.getItem('serverLocale') || this.$store.language.current,
-                                'X-Theme': sessionStorage.getItem('serverTheme') || this.$store.theme.current
+                                'X-Theme': this.$store.theme.getEffectiveTheme()
                             }
                         };
 
@@ -2173,7 +2253,7 @@
                             options.headers['Authorization'] = `Bearer ${this.authToken}`;
                         }
 
-                        if (['POST', 'PUT', 'DELETE'].includes(this.method) && this.bodyStr) {
+                        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(this.method) && this.bodyStr) {
                             try {
                                 const requestBody = JSON.parse(this.bodyStr); // Validate
                                 options.body = JSON.stringify(requestBody);
@@ -2227,27 +2307,9 @@
                                 console.log('[Preferences] Cleared server preferences on logout');
                             }
 
-                            // On login success, capture server preferences and apply to UI
-                            if (this.config.isLoginRunner && jsonResponse && jsonResponse.preferences) {
-                                const prefs = jsonResponse.preferences;
-                                if (prefs.language) {
-                                    sessionStorage.setItem('serverLocale', prefs.language);
-                                    this.$store.language.current = prefs.language;
-                                    console.log('[Preferences] Server language:', prefs.language);
-                                }
-                                if (prefs.theme) {
-                                    sessionStorage.setItem('serverTheme', prefs.theme);
-                                    this.$store.theme.current = prefs.theme;
-                                    this.$store.theme.apply();
-                                    console.log('[Preferences] Server theme:', prefs.theme);
-                                }
-                                if (prefs.timezone) {
-                                    sessionStorage.setItem('serverTimezone', prefs.timezone);
-                                    console.log('[Preferences] Server timezone:', prefs.timezone);
-                                }
-                                // Update headers display to reflect server preferences
-                                this.updateHeadersDisplay();
-                            }
+                            // Apply server preferences from any endpoint that returns them.
+                            this.applyPreferencesFromResponse(jsonResponse);
+                            this.updateHeadersDisplay();
 
                             // Dispatch success event for other runners
                             this.$dispatch('runner-success', {
@@ -2301,12 +2363,12 @@
                     const headers = {
                         'Accept-Language': sessionStorage.getItem('serverLocale') || this.$store.language.current,
                         'X-Locale': sessionStorage.getItem('serverLocale') || this.$store.language.current,
-                        'X-Theme': sessionStorage.getItem('serverTheme') || this.$store.theme.current
+                        'X-Theme': this.$store.theme.getEffectiveTheme()
                     };
                     if (this.authToken) {
                         headers['Authorization'] = `Bearer ${this.authToken}`;
                     }
-                    if (['POST', 'PUT', 'DELETE'].includes(this.method)) {
+                    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(this.method)) {
                         headers['Content-Type'] = 'application/json; charset=UTF-8';
                     }
                     this.requestHeadersStr = JSON.stringify(headers, null, 2);
