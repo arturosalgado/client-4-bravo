@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>Domain Verification</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        (function () {
+            const getSystemTheme = () =>
+                window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            const selectedTheme = localStorage.getItem('selectedTheme') || 'system';
+            const resolvedTheme = selectedTheme === 'system' ? getSystemTheme() : selectedTheme;
+            document.documentElement.setAttribute('data-theme', resolvedTheme);
+        })();
+    </script>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --accent: #0284c7;
+            --accent-hover: #0369a1;
+            --border: #cbd5e1;
+            --input-bg: #f8fafc;
+            --btn-text: #ffffff;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        :root[data-theme="dark"] {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --border: #334155;
+            --input-bg: #0f172a;
+            --btn-text: #0f172a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 90px 20px 60px;
+            gap: 2rem;
+        }
+
+        .sticky-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 0.4rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .back-link:hover { background-color: var(--input-bg); border-color: var(--accent); }
+
+        .header-right { display: flex; align-items: center; gap: 0.75rem; }
+        .header-right label { font-size: 0.8rem; color: var(--text-secondary); }
+        .header-right select {
+            padding: 0.45rem 0.75rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 560px;
+            border: 1px solid var(--border);
+        }
+
+        .card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .card-subtitle { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+
+        .form-group { margin-bottom: 1.25rem; }
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+        label .required { color: var(--error); }
+        label .hint { font-size: 0.78rem; color: var(--text-secondary); font-weight: 400; }
+
+        input[type="text"], input[type="email"] {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+        }
+        input::placeholder { color: var(--text-secondary); opacity: 0.7; }
+
+        .method-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+            cursor: pointer;
+        }
+        .method-option input[type="radio"] {
+            width: auto;
+            margin-top: 0.25rem;
+            accent-color: var(--accent);
+        }
+        .method-content { flex: 1; }
+        .method-desc { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 0.5rem; }
+        .method-note { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-style: italic; }
+        .method-list { font-size: 0.85rem; color: var(--text-secondary); margin: 0.5rem 0 1rem 0; padding-left: 1.25rem; }
+        .method-list li { margin-bottom: 0.25rem; }
+
+        .token-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .token-box span { flex: 1; word-break: break-all; }
+        .copy-btn {
+            padding: 0.35rem 0.6rem;
+            font-size: 0.75rem;
+            background: var(--accent);
+            color: var(--btn-text);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .copy-btn:hover { background: var(--accent-hover); }
+
+        .btn-row { display: flex; gap: 0.75rem; margin-top: 1.75rem; }
+        .btn {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-primary { background-color: var(--accent); color: var(--btn-text); }
+        .btn-primary:hover:not(:disabled) { background-color: var(--accent-hover); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-secondary { background-color: transparent; color: var(--accent); border: 1px solid var(--border); }
+        .btn-secondary:hover { background-color: var(--input-bg); border-color: var(--accent); }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .status-msg { margin-top: 0.75rem; font-size: 0.85rem; min-height: 1.25em; }
+        .status-msg.error { color: var(--error); }
+        .status-msg.success { color: var(--success); }
+
+        .dev-card { border-left: 4px solid var(--warning); }
+        .dev-badge {
+            display: inline-flex;
+            background-color: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            text-transform: uppercase;
+        }
+        .dev-auth-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 0.6rem 0.9rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-top: 1rem;
+        }
+        .dev-auth-status.logged-in { background-color: rgba(34, 197, 94, 0.1); border-color: var(--success); color: var(--success); }
+        .dev-auth-status.logged-out { background-color: var(--input-bg); color: var(--text-secondary); }
+        .btn-danger { background-color: transparent; color: var(--error); border: 1px solid var(--error); }
+        .btn-danger:hover { background-color: rgba(239, 68, 68, 0.08); }
+        .btn-warning { background-color: var(--warning); color: #fff; }
+        .btn-warning:hover:not(:disabled) { filter: brightness(0.9); }
+        .btn-warning:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* Floating label inputs */
+        .field {
+            position: relative;
+            margin-bottom: 1.25rem;
+        }
+        .field input[type="text"],
+        .field input[type="email"] {
+            width: 100%;
+            padding: 1.1rem 1rem 0.45rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(56,189,248,0.12); }
+        .field label {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            pointer-events: none;
+            transition: all 0.15s ease;
+            background: transparent;
+            padding: 0 0.15rem;
+        }
+        .field input:focus ~ label,
+        .field input:not(:placeholder-shown) ~ label {
+            top: 0.55rem;
+            transform: none;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: var(--card-bg);
+        }
+        .field label .required { color: var(--error); }
+
+        /* Inline record rows (Name / Token) */
+        .record-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        .record-row .record-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            min-width: 3rem;
+        }
+        .record-row .record-value {
+            font-family: 'Menlo','Monaco','Courier New',monospace;
+            font-weight: 700;
+            word-break: break-all;
+            flex: 1;
+        }
+        .record-row .copy-btn { flex-shrink: 0; }
+    </style>
+</head>
+
+<body 
+x-data="app()" x-init="init()">
+
+    <div class="sticky-header">
+        <div>
+            <a href="index.html" class="back-link">← Back</a>
+        </div>
+        <div class="header-right">
+            <label for="locale-select">Language</label>
+            <select id="locale-select" x-model="locale" @change="saveLocale()">
+                <option value="en-US">English (US)</option>
+                <option value="es-US">Spanish (US)</option>
+                <option value="es-MX">Spanish (MX)</option>
+            </select>
+            <label for="theme-select">Theme</label>
+            <select id="theme-select" x-model="selectedTheme" @change="applyTheme()">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Dev Login Card -->
+    <div class="card dev-card">
+        <span class="dev-badge">🔧 Dev</span>
+        <div class="card-title" style="margin-top: 0.5rem;">Quick Test – Login</div>
+        <div class="card-subtitle">
+            Log in to get an access token. Required to call the domain verification API.
+            Ensure auth-api-gateway is running (default port 3007). Add <code>?apiUrl=http://localhost:PORT</code> if using a different port.
+            <br><strong>If login fails:</strong> (1) Run the Vektr seeder: <code>cd packages/database && npm run db:seed</code>. (2) Ensure CORS_ALLOWED_ORIGINS in .env includes <code>null</code> when opening this file from disk.
+        </div>
+        <div class="form-group">
+            <label for="dev-email">Email</label>
+            <input id="dev-email" type="text" x-model="email" placeholder="arturo@vektr.com" />
+        </div>
+        <div class="form-group">
+            <label for="dev-password">Password</label>
+            <input id="dev-password" type="text" x-model="password" placeholder="VektrTest123!" />
+        </div>
+        <div class="dev-auth-status" :class="$store.auth.token ? 'logged-in' : 'logged-out'">
+            <span x-text="$store.auth.token ? '✔ Authenticated' : '○ Not logged in'"></span>
+            <span x-show="$store.auth.token" style="flex:1; text-align:right;">
+                <button class="btn btn-danger" style="flex:0; padding:0.3rem 0.75rem; font-size:0.78rem;" @click="logout()">Logout</button>
+            </span>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-warning" type="button" :disabled="loading" @click="login()">
+                <span x-show="loading" class="spinner" style="border-top-color:#fff;"></span>
+                <span x-text="loading ? 'Logging in…' : ($store.auth.token ? 'Re-login' : 'Login')"></span>
+            </button>
+        </div>
+        <div class="status-msg" :class="loginStatusType" x-show="loginStatusMsg" x-text="loginStatusMsg"></div>
+    </div>
+
+    <!-- Domain Verification Card -->
+    <div class="card">
+        <div class="card-title">Choose a verification method to add a Domain to your Organization</div>
+        <div class="card-subtitle">
+            Select how you want to verify domain ownership.
+        </div>
+
+        <!-- Method selection -->
+        <div class="method-option" @click="method = 'email'">
+            <input type="radio" id="method-email" name="method" value="email" :checked="method === 'email'" />
+            <div class="method-content">
+                <label for="method-email">Email method</label>
+            </div>
+        </div>
+
+        <!-- Email method fields – shown only when Email is selected -->
+        <div x-show="method === 'email'" x-cloak style="margin-left: 2rem; margin-bottom: 1rem;">
+            <p class="method-desc">
+                Enter a valid email address that ends exactly with the domain you are verifying.
+                We will send a secure link to this address to confirm ownership.
+            </p>
+            <p class="method-note">
+                Note: To verify company.com, the email must end in @company.com. To verify sales.company.com, the email must end in @sales.company.com.
+            </p>
+            <p class="method-desc" style="margin-bottom: 1rem;">
+                You can enter your own email if you plan to verify it, or that of another person if you prefer that they verify it.
+            </p>
+            <div class="form-group">
+                <label for="verification-email">Email <span class="required">*</span> <span class="hint">— e.g. admin@example.com</span></label>
+                <input id="verification-email" type="email" x-model="verificationEmail" placeholder="Enter email" />
+            </div>
+        </div>
+
+        <!-- DNS method fields – shown only when DNS is selected -->
+        <div class="method-option" @click="method = 'dns'; fetchDnsToken()">
+            <input type="radio" id="method-dns" name="method" value="dns" :checked="method === 'dns'" />
+            <div class="method-content">
+                <label for="method-dns">DNS method</label>
+            </div>
+        </div>
+
+        <div x-show="method === 'dns'" x-cloak style="margin-left: 2rem; margin-bottom: 1rem;">
+            <p class="method-desc">Add the unique token below to your DNS records on your domain's nameserver to prove ownership.</p>
+            <p class="method-desc" style="margin-top: 0.5rem;">- <strong>Verify Now:</strong> Leave the email field blank. Click Verify after you have added the record.</p>
+            <p class="method-desc" style="margin-top: 0.25rem; margin-bottom: 1rem;">- <strong>Delegate:</strong> Enter the email address of the person who has access to the DNS records. The instructions will be sent to them. We will automatically check for the record in the background.</p>
+
+            <div class="field">
+                <input id="dns-email" type="email" x-model="dnsDelegateEmail" placeholder=" " />
+                <label for="dns-email">Email — optional, for delegation</label>
+            </div>
+
+            <div class="field">
+                <input id="dns-domain" type="text" x-model="dnsDomain"
+                    @input="dnsToken = ''; dnsTxtHost = ''"
+                    @blur="fetchDnsToken()"
+                    placeholder=" " />
+                <label for="dns-domain">Domain <span class="required">*</span></label>
+            </div>
+
+            <div x-show="dnsTxtHost" class="record-row" style="margin-bottom: 0.5rem;">
+                <span class="record-label">Name:</span>
+                <span class="record-value" x-text="dnsTxtHost"></span>
+                <button type="button" class="copy-btn" @click="navigator.clipboard.writeText(dnsTxtHost)" title="Copy">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+            </div>
+            <div x-show="dnsToken" class="record-row" style="margin-bottom: 1rem;">
+                <span class="record-label">Token:</span>
+                <span class="record-value" x-text="dnsToken"></span>
+                <button type="button" class="copy-btn" @click="copyToken()" title="Copy">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <a href="index.html" class="btn btn-secondary" style="text-decoration: none;">Back</a>
+            <button
+                class="btn btn-primary"
+                type="button"
+                :disabled="verifyLoading || !$store.auth.token || !canVerify()"
+                @click="verify()"
+            >
+                <span x-show="verifyLoading" class="spinner"></span>
+                <span x-text="verifyLoading ? 'Verifying…' : 'Verify'"></span>
+            </button>
+        </div>
+
+        <div class="status-msg" :class="verifyStatusType" x-show="verifyStatusMsg" x-text="verifyStatusMsg"></div>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('auth', { token: null });
+        });
+
+        // API base URL - override via ?apiUrl=http://localhost:3007 or data-api-url on script
+        const AUTH_API_BASE = (() => {
+            const params = new URLSearchParams(window.location.search);
+            const fromUrl = params.get('apiUrl');
+            if (fromUrl) return fromUrl.replace(/\/$/, '') + (fromUrl.endsWith('/api') ? '' : '/api');
+            const script = document.currentScript;
+            const fromData = script?.closest('[data-api-url]')?.getAttribute('data-api-url');
+            if (fromData) return fromData.replace(/\/$/, '') + (fromData.endsWith('/api') ? '' : '/api');
+            return 'http://localhost:3007/api';
+        })();
+
+        function app() {
+            return {
+                selectedTheme: localStorage.getItem('selectedTheme') || 'system',
+                locale: localStorage.getItem('selectedLocale') || 'en-US',
+                email: 'arturo@vektr.com',
+                password: 'VektrTest123!',
+                method: 'email',
+                verificationEmail: 'arturo@vektr.com',
+                dnsDomain: 'vektr.com',
+                dnsDelegateEmail: '',
+                dnsToken: '',
+                dnsTxtHost: '',
+                emailVerifyLockedFor: '',
+                loading: false,
+                verifyLoading: false,
+                loginStatusMsg: '',
+                loginStatusType: 'success',
+                verifyStatusMsg: '',
+                verifyStatusType: 'success',
+
+                init() {
+                    this.applyTheme();
+                    this.$nextTick(() => {
+                        if (this.method === 'dns') this.fetchDnsToken();
+                    });
+                },
+
+                saveLocale() {
+                    localStorage.setItem('selectedLocale', this.locale);
+                },
+
+                async fetchDnsToken() {
+                    const domain = this.dnsDomain.trim();
+                    const token = Alpine.store('auth').token;
+                    if (!domain || !token || this.dnsToken) return;
+                    try {
+                        const res = await fetch(
+                            `${AUTH_API_BASE}/auth/v1.0/domain/verification-status?domain=${encodeURIComponent(domain)}`,
+                            { headers: { 'Authorization': `Bearer ${token}` } }
+                        );
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        this.dnsToken   = data.token   || '';
+                        this.dnsTxtHost = data.txtHost || '';
+                    } catch (_) {}
+                },
+
+                applyTheme() {
+                    localStorage.setItem('selectedTheme', this.selectedTheme);
+                    const resolved = this.selectedTheme === 'system'
+                        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                        : this.selectedTheme;
+                    document.documentElement.setAttribute('data-theme', resolved);
+                },
+
+                canVerify() {
+                    if (this.method === 'email') {
+                        const email = this.verificationEmail.trim().toLowerCase();
+                        return email.length > 0 && email !== this.emailVerifyLockedFor;
+                    }
+                    return this.dnsDomain.trim().length > 0;
+                },
+
+                showLoginStatus(msg, type = 'success') {
+                    this.loginStatusMsg = msg;
+                    this.loginStatusType = type;
+                    setTimeout(() => { this.loginStatusMsg = ''; }, 5000);
+                },
+
+                showVerifyStatus(msg, type = 'success') {
+                    this.verifyStatusMsg = msg;
+                    this.verifyStatusType = type;
+                    setTimeout(() => { this.verifyStatusMsg = ''; }, 6000);
+                },
+
+                async login() {
+                    this.loading = true;
+                    this.loginStatusMsg = '';
+                    try {
+                        const res = await fetch(`${AUTH_API_BASE}/auth/v1.0/login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: this.email, password: this.password }),
+                        });
+                        let data;
+                        try { data = await res.json(); } catch (_) { data = {}; }
+                        if (!res.ok) {
+                            const msg = data.message || data.error || `HTTP ${res.status}`;
+                            let hint = '';
+                            if (res.status === 401 && (msg.includes('Invalid') || msg.includes('invalid'))) {
+                                hint = ' Ensure the Vektr seeder has been run (packages/database: npm run db:seed).';
+                            }
+                            this.showLoginStatus(`Login failed: ${msg}.${hint}`, 'error');
+                            return;
+                        }
+                        Alpine.store('auth').token = data.accessToken;
+                        this.showLoginStatus('Logged in successfully.', 'success');
+                        if (this.method === 'dns') await this.fetchDnsToken();
+                    } catch (err) {
+                        const msg = err.cause?.code === 'ECONNREFUSED'
+                            ? `Cannot connect to ${AUTH_API_BASE}. Is auth-api-gateway running?`
+                            : `Network error: ${err.message}`;
+                        this.showLoginStatus(msg, 'error');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async logout() {
+                    try {
+                        await fetch(`${AUTH_API_BASE}/auth/v1.0/logout`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${Alpine.store('auth').token}` },
+                        });
+                    } catch (_) {}
+                    Alpine.store('auth').token = null;
+                    this.showLoginStatus('Logged out.', 'success');
+                },
+
+                copyToken() {
+                    if (this.dnsToken) {
+                        navigator.clipboard.writeText(this.dnsToken);
+                        this.showVerifyStatus('Token copied to clipboard.', 'success');
+                    }
+                },
+
+                async verify() {
+                    const token = Alpine.store('auth').token;
+                    if (!token) {
+                        this.showVerifyStatus('Please log in first.', 'error');
+                        return;
+                    }
+
+                    this.verifyLoading = true;
+                    this.verifyStatusMsg = '';
+
+                    try {
+                        if (this.method === 'email') {
+                            await this.verifyEmailMethod(token);
+                        } else {
+                            await this.verifyDnsMethod(token);
+                        }
+                    } catch (err) {
+                        this.showVerifyStatus(`Network error: ${err.message}`, 'error');
+                    } finally {
+                        this.verifyLoading = false;
+                    }
+                },
+
+                async verifyEmailMethod(token) {
+                    const e = this.verificationEmail.trim();
+                    if (!e || !e.includes('@')) {
+                        this.showVerifyStatus('Enter a valid email address.', 'error');
+                        return;
+                    }
+                    const domain = e.split('@')[1];
+                    if (!domain) {
+                        this.showVerifyStatus('Invalid email format.', 'error');
+                        return;
+                    }
+
+                    const res = await fetch(`${AUTH_API_BASE}/auth/v1.0/domain/send-verification-email`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({ domain, verificationEmail: e, locale: this.locale }),
+                    });
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        // Prevent generating multiple tokens for the same email by requiring
+                        // the user to change the email field before enabling Verify again.
+                        this.emailVerifyLockedFor = e.toLowerCase();
+                        this.showVerifyStatus(
+                            `Verification email sent to ${e}. Check your inbox and click the link to verify. Change the email field to enable Verify again.`,
+                            'success'
+                        );
+                    } else {
+                        this.showVerifyStatus(data.message || `Error ${res.status}`, 'error');
+                    }
+                },
+
+                async verifyDnsMethod(token) {
+                    const domain = this.dnsDomain.trim();
+                    if (!domain) {
+                        this.showVerifyStatus('Domain is required.', 'error');
+                        return;
+                    }
+
+                    if (this.dnsDelegateEmail.trim()) {
+                        const res = await fetch(`${AUTH_API_BASE}/auth/v1.0/domain/check-record`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                                domain,
+                                technicianEmail: this.dnsDelegateEmail.trim(),
+                                locale: this.locale,
+                            }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.dnsToken = (data.verification && data.verification.token) || data.token || '';
+                            this.dnsTxtHost = (data.verification && data.verification.txtHost) || data.txtHost || '';
+                            this.showVerifyStatus('Automatic verification scheduled. Instructions sent to ' + this.dnsDelegateEmail.trim(), 'success');
+                        } else {
+                            this.showVerifyStatus(data.message || `Error ${res.status}`, 'error');
+                        }
+                    } else {
+                        if (!this.dnsToken) {
+                            const statusRes = await fetch(
+                                `${AUTH_API_BASE}/auth/v1.0/domain/verification-status?domain=${encodeURIComponent(domain)}`,
+                                { headers: { 'Authorization': `Bearer ${token}` } }
+                            );
+                            const statusData = await statusRes.json();
+                            if (!statusRes.ok) {
+                                this.showVerifyStatus(statusData.message || `Error ${statusRes.status}`, 'error');
+                                return;
+                            }
+                            this.dnsToken = statusData.token || '';
+                            this.dnsTxtHost = statusData.txtHost || '';
+                            this.showVerifyStatus('Add the TXT record above, then click Verify again.', 'success');
+                            return;
+                        }
+                        const res = await fetch(`${AUTH_API_BASE}/auth/v1.0/domain/verify`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({ domain }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            if (data.verified) {
+                                this.showVerifyStatus('Domain successfully verified!', 'success');
+                            } else {
+                                this.showVerifyStatus('DNS check complete — token not found yet. Add the TXT record and try again.', 'error');
+                            }
+                        } else {
+                            this.showVerifyStatus(data.message || `Error ${res.status}`, 'error');
+                        }
+                    }
+                },
+            };
+        }
+    </script>
+</body>
+
+</html>

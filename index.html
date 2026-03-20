@@ -422,6 +422,7 @@
                 <button :class="{ 'active': $store.tabs.active === 'sessions' }" @click="$store.tabs.active = 'sessions'">Sessions</button>
                 <button :class="{ 'active': $store.tabs.active === 'preferences' }" @click="$store.tabs.active = 'preferences'">Preferences</button>
                 <button :class="{ 'active': $store.tabs.active === 'tenant' }" @click="$store.tabs.active = 'tenant'">Tenant</button>
+                <a href="domain.html" style="display:inline-flex;align-items:center;padding:0.5rem 1.25rem;border-radius:8px;font-size:0.9rem;font-weight:600;color:var(--text-secondary);text-decoration:none;border:1px solid var(--border);background:transparent;transition:color 0.2s,border-color 0.2s,background-color 0.2s;" onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)';this.style.backgroundColor='var(--input-bg)';" onmouseout="this.style.color='var(--text-secondary)';this.style.borderColor='var(--border)';this.style.backgroundColor='transparent';">&#127760; Domain</a>
             </nav>
             <!-- Sub-navigation per tab -->
             <nav class="nav-menu" x-show="$store.tabs.active === 'auth'">
@@ -446,6 +447,8 @@
                 <a href="#section-tenant-prefs-get">Get Tenant Prefs</a>
                 <a href="#section-tenant-prefs">Update Tenant Prefs</a>
                 <a href="#section-tenant-prefs-delete">Delete Tenant Prefs</a>
+                <a href="#section-domain-delegate-verify">Domain Delegate Verify</a>
+                <a href="#section-test-email">Test Email</a>
             </nav>
         </div>
     </div>
@@ -1491,6 +1494,161 @@
         </div>
     </div>
 
+    <!-- Runner: Domain Delegate Verify -->
+    <div id="section-domain-delegate-verify" class="container" x-show="$store.tabs.active === 'tenant'" x-data="requestRunner({
+        id: 'domain-delegate-verify',
+        title: 'Domain Verification (Delegate via Email)',
+        url: 'http://localhost:3007/api/auth/v1.0/domain/check-record',
+        method: 'POST',
+        body: {
+            verificationMethod: 'dns',
+            technicianEmail: '',
+            domain: 'bravoproject.dev',
+            recordType: 'TXT',
+            hostname: '_vektroplus.bravoproject.dev',
+            expectedValue: 'VEKTR+-A1B2C3D4',
+            ttl: 3600
+        }
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+        <p style="margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.9rem;">
+            If <strong>technicianEmail</strong> is filled, backend emits a Kafka event so saga-orchestrator sends TXT setup instructions to that email.
+        </p>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group">
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Sending...' : 'Verify / Delegate'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Runner: Test Email -->
+    <div id="section-test-email" class="container" x-show="$store.tabs.active === 'tenant'" x-data="requestRunner({
+        id: 'test-email',
+        title: 'Test Email Workflow',
+        url: 'http://localhost:3007/api/auth/v1.0/test-email',
+        method: 'POST',
+        body: {
+            name: 'Arturo',
+            email: '',
+            message: 'Hello Arturo, the email workflow works'
+        }
+    })" @runner-success.window="handleGlobalSuccess($event.detail)">
+
+        <h1 x-text="config.title"></h1>
+        <p style="margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.9rem;">
+            Uses the protected API endpoint and the full Kafka to saga-orchestrator to Novu pipeline.
+            Real delivery depends on running the local services with <code>NOTIFICATION_REAL_TEST=true</code>.
+        </p>
+
+        <div class="form-group" style="display: flex; gap: 10px;">
+            <select :id="config.id + '-method'" x-model="method" style="width: 100px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+            </select>
+            <input type="url" :id="config.id + '-url'" x-model="url" placeholder="https://api.example.com/data"
+                style="flex-grow: 1;">
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-name'">Name</label>
+            <input type="text" :id="config.id + '-name'" :value="getBodyField('name', 'Arturo')"
+                @input="setBodyField('name', $event.target.value)" placeholder="Arturo">
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-email'">Email</label>
+            <input type="email" :id="config.id + '-email'" :value="getBodyField('email', '')"
+                @input="setBodyField('email', $event.target.value)" placeholder="arturo@example.com">
+        </div>
+
+        <div class="form-group">
+            <label :for="config.id + '-message'">Message</label>
+            <textarea :id="config.id + '-message'" @input="setBodyField('message', $event.target.value)"
+                x-text="getBodyField('message', 'Hello Arturo, the email workflow works')"></textarea>
+        </div>
+
+        <div class="form-group">
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-body'">Request Body (JSON)</label>
+                    <textarea :id="config.id + '-body'" x-model="bodyStr"></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-headers'">Request Headers</label>
+                    <textarea :id="config.id + '-headers'" x-model="requestHeadersStr" readonly></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <button :id="config.id + '-btn'" @click="sendRequest" :disabled="isLoading"
+                x-text="isLoading ? 'Sending...' : 'Send Test Email'"></button>
+            <div :id="config.id + '-status'" class="status" :class="statusType">
+                <span x-text="statusMsg"></span>
+                <span x-show="authToken" class="token-badge">TOKEN SET</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="split-textarea">
+                <div class="textarea-panel">
+                    <label :for="config.id + '-output'">Response</label>
+                    <textarea :id="config.id + '-output'" x-model="responseOutput" readonly></textarea>
+                </div>
+                <div class="textarea-panel">
+                    <label :for="config.id + '-token'">Decoded Access Token</label>
+                    <textarea :id="config.id + '-token'" x-model="decodedTokenStr" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Runner: Bulk Delete -->
     <div id="section-bulk-delete" class="container" x-show="$store.tabs.active === 'sessions'" x-data="requestRunner({
         id: 'session-delete',
@@ -2384,6 +2542,15 @@
                         const newBody = {};
                         newBody[field] = value;
                         this.bodyStr = JSON.stringify(newBody, null, 2);
+                    }
+                },
+
+                getBodyField(field, fallback = '') {
+                    try {
+                        const currentBody = JSON.parse(this.bodyStr);
+                        return currentBody[field] ?? fallback;
+                    } catch (e) {
+                        return fallback;
                     }
                 },
 
